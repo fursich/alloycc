@@ -46,6 +46,14 @@ void expect(char *op) {
   token = token->next;
 }
 
+char *expect_ident() {
+  if (token->kind != TK_IDENT)
+    error_at(token->str, "変数ではありません");
+  char *str = token->str;
+  token = token->next;
+  return str;
+}
+
 int expect_number() {
   if (token->kind != TK_NUM)
     error_at(token->str, "数ではありません");
@@ -105,6 +113,11 @@ Token *tokenize() {
 
     if (ispunct(*p)) {
       cur = new_token(TK_RESERVED, cur, p++, 1);
+      continue;
+    }
+
+    if (isalpha(*p) && !is_alnum(p[1])) {
+      cur = new_token(TK_IDENT, cur, p++, 1);
       continue;
     }
 

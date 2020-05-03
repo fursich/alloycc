@@ -23,6 +23,12 @@ static Node *new_node_binary(NodeKind kind, Node *lhs, Node *rhs) {
   return node;
 }
 
+static Node *new_node_ident(char *ident) {
+  Node *node = new_node(ND_VAR);
+  node->index = (*ident - 'a' + 1) * 8;
+  return node;
+}
+
 static Node *new_node_num(int val) {
   Node *node = new_node(ND_NUM);
   node->val = val;
@@ -31,6 +37,7 @@ static Node *new_node_num(int val) {
 
 static Node *stmt(void);
 static Node *expr(void);
+static Node *assign(void);
 static Node *equality(void);
 static Node *relational(void);
 static Node *add(void);
@@ -66,9 +73,18 @@ static Node *stmt() {
   return node;
 }
 
-// expr = equality
+// expr = assign
 static Node *expr() {
-  return equality();
+  return assign();
+}
+
+// assign = equality ("=" assign)?
+static Node *assign() {
+  Node *node = equality();
+  if (consume("="))
+    node = new_node_binary(ND_ASSIGN, node, assign());
+
+  return node;
 }
 
 // equality = relational ('==' relational | '!=' relational)*
@@ -141,7 +157,7 @@ static Node *unary() {
   return primary();
 }
 
-// primary = "(" expr ")" | num
+// primary = num | ident | "(" expr ")"
 static Node *primary() {
 
   if (consume("(")) {
@@ -149,6 +165,9 @@ static Node *primary() {
     expect(")");
     return node;
   }
+
+  if (token->kind == TK_IDENT)
+    return new_node_ident(expect_ident());
 
   return new_node_num(expect_number());
 }

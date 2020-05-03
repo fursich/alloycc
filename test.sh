@@ -52,4 +52,11 @@ assert 1  'return 1; 2; 3;'
 assert 2  '1; return 2; 3;'
 assert 3  '1; 2; return 3;'
 assert 1  'return 1; return 2; return 3;'
+
+assert 1  'a = 1; return a;'
+assert 2  'a = z = 2; return z;'
+assert 2  'a = z = 2; return a;'
+assert 1  'a = 3; b = 2; c = a - b; return c;'
+assert 6  'a = 3; b = 2; c = 4; z = a * 4 / (3 * b - c); return z;'
+
 echo OK

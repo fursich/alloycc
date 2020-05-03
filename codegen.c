@@ -3,11 +3,35 @@
 //
 // Code generator
 //
+static void gen_lval(Node *node) {
+  if (node->kind != ND_VAR)
+    error("代入の左辺値が変数ではありません\n");
+
+  printf("  mov rax, rbp\n");
+  printf("  sub rax, %d\n", node->index);
+  printf("  push rax\n");
+}
 
 static void gen(Node *node) {
   switch (node->kind) {
     case ND_NUM:
       printf("  push %d\n", node->val);
+      return;
+    case ND_VAR:
+      gen_lval(node);
+
+      printf("  pop rax\n");
+      printf("  mov rax, [rax]\n");
+      printf("  push rax\n");
+      return;
+    case ND_ASSIGN:
+      gen_lval(node->lhs);
+      gen(node->rhs);
+
+      printf("  pop rdi\n");
+      printf("  pop rax\n");
+      printf("  mov [rax], rdi\n");
+      printf("  push rdi\n");
       return;
     case ND_RETURN:
       gen(node->lhs);
@@ -70,10 +94,18 @@ void codegen(Node *node) {
   printf(".global main\n");
   printf("main:\n");
 
+  // prologue
+  printf("  push rbp\n");
+  printf("  mov rbp, rsp\n");
+  printf("  sub rsp, %d\n", 30 * 8); // TODO: tentatively book 100*8 bytes of local vars
+
   for (Node *n = node; n; n = n->next)
     gen(n);
 
   // epilogue
   printf(".L.return:\n");
+  printf("  mov rsp, rbp\n");
+  printf("  pop rbp\n");
+
   printf("  ret\n");
 }

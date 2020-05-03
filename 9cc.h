@@ -11,6 +11,7 @@
 
 typedef enum {
   TK_RESERVED,
+  TK_IDENT,
   TK_NUM,
   TK_EOF,
 } TokenKind;
@@ -28,6 +29,7 @@ void error(char *fmt, ...);
 void error_at(char *loc, char *fmt, ...);
 bool consume(char *op);
 void expect(char *op);
+char *expect_ident(void);
 int expect_number(void);
 bool at_eof(void);
 Token *tokenize(void);
@@ -45,6 +47,7 @@ typedef enum {
   ND_MUL,       // *
   ND_DIV,       // /
 
+  ND_ASSIGN,    // =
   ND_EQ,        // ==
   ND_NE,        // !=
   ND_LT,        // <
@@ -52,6 +55,7 @@ typedef enum {
 
   ND_RETURN,    // "return"
   ND_EXPR_STMT, // statement with expression (w/o return)
+  ND_VAR,       // local variables
   ND_NUM,       // Integer
 } NodeKind;
 
@@ -62,7 +66,9 @@ struct Node {
 
   Node *lhs;
   Node *rhs;
-  int val; // used only when kind == ND_NUM
+
+  int val;    // used only when kind == ND_NUM
+  int index;  // index for lvar
 };
 
 Node *program(void);
