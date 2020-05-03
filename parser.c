@@ -10,6 +10,12 @@ static Node *new_node(NodeKind kind) {
   return node;
 }
 
+static Node *new_node_unary(NodeKind kind, Node *lhs) {
+  Node *node = new_node(kind);
+  node->lhs = lhs;
+  return node;
+}
+
 static Node *new_node_binary(NodeKind kind, Node *lhs, Node *rhs) {
   Node *node = new_node(kind);
   node->lhs = lhs;
@@ -45,11 +51,18 @@ Node *program() {
   return head.next;
 }
 
-// stmt = expr ";"
+// stmt = return_statement | expr ";"
 static Node *stmt() {
-  Node *node = expr();
-  expect(";");
+  Node *node;
 
+  if (consume("return")) {
+    node = new_node_unary(ND_RETURN, expr());
+    expect(";");
+    return node;
+  }
+
+  node = expr();
+  expect(";");
   return node;
 }
 

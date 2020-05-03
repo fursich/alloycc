@@ -5,9 +5,15 @@
 //
 
 static void gen(Node *node) {
-  if (node->kind == ND_NUM) {
-    printf("  push %d\n", node->val);
-    return;
+  switch (node->kind) {
+    case ND_NUM:
+      printf("  push %d\n", node->val);
+      return;
+    case ND_RETURN:
+      gen(node->lhs);
+      printf("  pop rax\n");
+      printf("  jmp .L.return\n");
+      return;
   }
 
   gen(node->lhs);
@@ -65,5 +71,7 @@ void codegen(Node *node) {
     printf("  pop rax\n");
   }
 
+  // epilogue
+  printf(".L.return:\n");
   printf("  ret\n");
 }
