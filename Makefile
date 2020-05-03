@@ -1,16 +1,48 @@
-CFLAGS=-std=c11 -g -static
-SRCS=$(wildcard *.c)
-OBJS=$(SRCS:.c=.o)
+CC        = gcc
+CFLAGS    = -std=c11 -static
 
-9cc: $(OBJS)
-	$(CC) -o 9cc $(OBJS) $(LDFLAGS)
+# for release build
+SRCS      = $(wildcard *.c)
+OBJS      = $(SRCS:.c=.o)
+TARGET    = 9cc
+HEADER    = $(TARGET).h
+RELCFLAGS = -g -o3 -DNDEBUG
 
-$(OBJS): 9cc.h
+# for debug build
+DBGDIR    = debug
+DBGOBJS   = $(addprefix $(DBGDIR)/, $(OBJS))
+DBGTARGET = $(DBGDIR)/$(TARGET)
+DBGCFLAGS = -g -o0 -DDEBUG
 
-test: 9cc
+all: prep release
+
+# debug rules
+debug: $(DBGTARGET)
+
+$(DBGTARGET): $(DBGOBJS)
+	$(CC) $(LDFLAGS) -o $@ $^
+
+$(DBGDIR)/%.o: %.c
+	$(CC) -c $(CFLAGS) $(DBGCFLAGS) -o $@ $<
+
+$(DBGOBJS): $(HEADER)
+
+#release rules
+release: $(TARGET)
+
+$(TARGET): $(OBJS)
+	$(CC) $(LDFLAGS) -o $@ $^
+
+$(OBJS): $(HEADER)
+
+# for testing (w/ debug)
+test: $(DBGTARGET)
 	./test.sh
 
 clean:
-	rm -f 9cc *.o *~ tmp*
+	rm -f $(TARGET) *.o *~ tmp* $(DBGDIR)/tmp* $(DBGTARGET) $(DBGDIR)/*.o
 
-.PHONY: test clean
+prep:
+	mkdir -p $(DBGDIR)
+
+.PHONY: test clean release debug prep
