@@ -14,6 +14,10 @@ static void gen(Node *node) {
       printf("  pop rax\n");
       printf("  jmp .L.return\n");
       return;
+    case ND_EXPR_STMT:
+      gen(node->lhs);
+      printf("  add rsp, 8\n");
+      return;
   }
 
   gen(node->lhs);
@@ -66,10 +70,8 @@ void codegen(Node *node) {
   printf(".global main\n");
   printf("main:\n");
 
-  for (Node *n = node; n; n = n->next) {
+  for (Node *n = node; n; n = n->next)
     gen(n);
-    printf("  pop rax\n");
-  }
 
   // epilogue
   printf(".L.return:\n");
