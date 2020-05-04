@@ -80,13 +80,17 @@ struct Node {
   int val;    // used when kind == ND_NUM
 };
 
-extern Var *locals;
-extern int stack_size;
+typedef struct ScopedContext ScopedContext;
+struct ScopedContext {
+  Node *node;
+  Var *locals;
+  int stack_size;
+};
 
-Node *program(void);
+ScopedContext *parse(void);
 
 //
 // codegen.c
 //
 
-void codegen(Node *node);
+void codegen(ScopedContext *block);

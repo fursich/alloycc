@@ -1,7 +1,6 @@
 #include "9cc.h"
 
 int stack_size;
-Var *locals = NULL;
 
 int main(int argc, char **argv) {
   if (argc != 2) {
@@ -11,15 +10,15 @@ int main(int argc, char **argv) {
 
   user_input = argv[1];
   token = tokenize();
-  Node *node = program();
+  ScopedContext *block = parse();
 
   int offset = 0;
-  for (Var *var = locals; var; var = var->next) {
+  for (Var *var = block->locals; var; var = var->next) {
     offset += 8;
     var->offset = offset;
   }
-  stack_size = offset;
+  block->stack_size = offset;
 
-  codegen(node);
+  codegen(block);
   return 0;
 }

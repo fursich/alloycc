@@ -4,6 +4,8 @@
 // Parser
 //
 
+Var *locals = NULL;
+
 static Node *new_node(NodeKind kind) {
   Node *node = calloc(1, sizeof(Node));
   node->kind = kind;
@@ -59,17 +61,18 @@ static Node *mul(void);
 static Node *unary(void);
 static Node *primary(void);
 
-// program = stmt*
-Node *program() {
+// scoped_block = stmt*
+ScopedContext *parse() {
   Node head = {0};
   Node *cur = &head;
 
-  while (!at_eof()) {
-    cur->next = stmt();
-    cur = cur->next;
-  }
+  while (!at_eof())
+    cur = cur->next = stmt();
 
-  return head.next;
+  ScopedContext *block = calloc(1, sizeof(ScopedContext));
+  block->node = head.next;
+  block->locals = locals;
+  return block;
 }
 
 // stmt = return_statement | expr ";"

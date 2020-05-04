@@ -89,7 +89,7 @@ static void gen(Node *node) {
   printf("  push rax\n");
 }
 
-void codegen(Node *node) {
+void codegen(ScopedContext *block) {
   printf(".intel_syntax noprefix\n");
   printf(".global main\n");
   printf("main:\n");
@@ -97,9 +97,9 @@ void codegen(Node *node) {
   // prologue
   printf("  push rbp\n");
   printf("  mov rbp, rsp\n");
-  printf("  sub rsp, %d\n", stack_size); // TODO: reserve registers (R12-R15) as well
+  printf("  sub rsp, %d\n", block->stack_size); // TODO: reserve registers (R12-R15) as well
 
-  for (Node *n = node; n; n = n->next)
+  for (Node *n = block->node; n; n = n->next)
     gen(n);
 
   // epilogue
