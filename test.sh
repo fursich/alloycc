@@ -59,4 +59,10 @@ assert 2  'a = z = 2; return a;'
 assert 1  'a = 3; b = 2; c = a - b; return c;'
 assert 6  'a = 3; b = 2; c = 4; z = a * 4 / (3 * b - c); return z;'
 
+assert 1  '_foo = 1; return _foo;'
+assert 2  'foo = bar = 2; return foo;'
+assert 3  'foo = bar = 3; return bar;'
+assert 11 'foo = 3; bar0 = 2; bar1 = foo - bar0; return bar1 + 10;'
+assert 6  'foo = 3; bar = 2; _baz = 4; quix = foo * 4 / (3 * bar - 2 * _baz); return -quix;'
+
 echo OK

@@ -1,3 +1,5 @@
+#define _POSIX_C_SOURCE 200809L
+
 #include <ctype.h>
 #include <stdarg.h>
 #include <stdbool.h>
@@ -29,7 +31,7 @@ void error(char *fmt, ...);
 void error_at(char *loc, char *fmt, ...);
 bool consume(char *op);
 void expect(char *op);
-char *expect_ident(void);
+Token *expect_ident(void);
 int expect_number(void);
 bool at_eof(void);
 Token *tokenize(void);
@@ -59,6 +61,13 @@ typedef enum {
   ND_NUM,       // Integer
 } NodeKind;
 
+typedef struct Var Var;
+struct Var {
+  Var *next;
+  char *name;
+  int offset;
+};
+
 typedef struct Node Node;
 struct Node {
   NodeKind kind;
@@ -67,9 +76,12 @@ struct Node {
   Node *lhs;
   Node *rhs;
 
-  int val;    // used only when kind == ND_NUM
-  int index;  // index for lvar
+  Var *var;   // used when kind == ND_VAR
+  int val;    // used when kind == ND_NUM
 };
+
+extern Var *locals;
+extern int stack_size;
 
 Node *program(void);
 

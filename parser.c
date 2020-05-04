@@ -10,6 +10,12 @@ static Node *new_node(NodeKind kind) {
   return node;
 }
 
+static Var *new_var(char *name) {
+  Var *var = calloc(1, sizeof(Var));
+  var->name = name;
+  return var;
+}
+
 static Node *new_node_unary(NodeKind kind, Node *lhs) {
   Node *node = new_node(kind);
   node->lhs = lhs;
@@ -23,10 +29,18 @@ static Node *new_node_binary(NodeKind kind, Node *lhs, Node *rhs) {
   return node;
 }
 
-static Node *new_node_ident(char *ident) {
+static Node *new_node_var(Var *var) {
   Node *node = new_node(ND_VAR);
-  node->index = (*ident - 'a' + 1) * 8;
+  node->var = var;
   return node;
+}
+
+static Var *lookup_var(Token *tok) {
+  for (Var *var = locals; var; var = var->next) {
+    if ((strlen(var->name) == tok->len) && !strncmp(var->name, tok->str, tok->len))
+      return var;
+  }
+  return NULL;
 }
 
 static Node *new_node_num(int val) {
@@ -166,8 +180,18 @@ static Node *primary() {
     return node;
   }
 
-  if (token->kind == TK_IDENT)
-    return new_node_ident(expect_ident());
+  if (token->kind == TK_IDENT) {
+    Var *var = lookup_var(token);
+    if (!var) {
+      char *name = strndup(token->str, token->len);
+      var = new_var(name);
+      var->next = locals;
+      locals = var;
+    }
+    expect_ident();
+
+    return new_node_var(var);
+  }
 
   return new_node_num(expect_number());
 }

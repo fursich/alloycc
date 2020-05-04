@@ -8,7 +8,7 @@ static void gen_lval(Node *node) {
     error("代入の左辺値が変数ではありません\n");
 
   printf("  mov rax, rbp\n");
-  printf("  sub rax, %d\n", node->index);
+  printf("  sub rax, %d\n", node->var->offset);
   printf("  push rax\n");
 }
 
@@ -97,7 +97,7 @@ void codegen(Node *node) {
   // prologue
   printf("  push rbp\n");
   printf("  mov rbp, rsp\n");
-  printf("  sub rsp, %d\n", 30 * 8); // TODO: tentatively book 100*8 bytes of local vars
+  printf("  sub rsp, %d\n", stack_size); // TODO: reserve registers (R12-R15) as well
 
   for (Node *n = node; n; n = n->next)
     gen(n);

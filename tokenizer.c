@@ -46,12 +46,12 @@ void expect(char *op) {
   token = token->next;
 }
 
-char *expect_ident() {
+Token *expect_ident() {
   if (token->kind != TK_IDENT)
     error_at(token->str, "変数ではありません");
-  char *str = token->str;
+  Token *tok = token;
   token = token->next;
-  return str;
+  return tok;
 }
 
 int expect_number() {
@@ -99,28 +99,37 @@ Token *tokenize() {
       continue;
     }
 
+    /* Keywords */
     if (startswith(p, "return") && !is_alnum(p[6])) {
       cur = new_token(TK_RESERVED, cur, p, 6);
       p += 6;
       continue;
     }
 
+    /* Identifier */
+    if (is_alpha(*p)) {
+      char *p0 = p++;
+      while (is_alnum(*p))
+        p++;
+      cur = new_token(TK_IDENT, cur, p0, p - p0);
+      continue;
+    }
+
+    /* Reserved Symbol: Multi-letter punctuators */
     if (startswith(p, "==") || startswith(p, "!=") || startswith(p, ">=") || startswith(p, "<=")) {
       cur = new_token(TK_RESERVED, cur, p, 2);
       p += 2;
       continue;
     }
 
+    /* Reserved Symbol: Single-letter punctuators */
+    /* NOTE: when put ahead of identifier detection, this will mis-detect identifiers that start with '_' */
     if (ispunct(*p)) {
       cur = new_token(TK_RESERVED, cur, p++, 1);
       continue;
     }
 
-    if (isalpha(*p) && !is_alnum(p[1])) {
-      cur = new_token(TK_IDENT, cur, p++, 1);
-      continue;
-    }
-
+    /* Integer Literal */
     if (isdigit(*p)) {
       cur = new_token(TK_NUM, cur, p, 0);
       char *q = p;
