@@ -55,6 +55,7 @@ static Node *stmt(void);
 
 static Node *if_stmt(void);
 static Node *while_stmt(void);
+static Node *for_stmt(void);
 static Node *return_stmt(void);
 static Node *expr_stmt(void);
 
@@ -95,6 +96,11 @@ static Node *stmt() {
     return node;
   }
 
+  if (consume("for")) {
+    node = for_stmt();
+    return node;
+  }
+
   if (consume("return")) {
     node = return_stmt();
     return node;
@@ -126,6 +132,29 @@ static Node *while_stmt() {
   expect("(");
   node->cond = expr();
   expect(")");
+  node->then = stmt();
+
+  return node;
+}
+
+// for_stmt (without "for") = ( init; cond; inc) then_stmt
+static Node *for_stmt() {
+  Node *node;
+
+  node = new_node(ND_FOR);
+  expect("(");
+  if(!consume(";")) {
+    node->init = new_node_unary(ND_EXPR_STMT, expr());
+    expect(";");
+  }
+  if(!consume(";")) {
+    node->cond = expr();
+    expect(";");
+  }
+  if(!consume(")")) {
+    node->inc = new_node_unary(ND_EXPR_STMT, expr());
+    expect(")");
+  }
   node->then = stmt();
 
   return node;

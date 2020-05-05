@@ -93,6 +93,7 @@ static const char *starts_with_reserved(char *p) {
     "if",
     "else",
     "while",
+    "for",
     "return",
   };
 

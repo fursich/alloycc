@@ -82,6 +82,8 @@ struct Node {
   Node *cond;
   Node *then;
   Node *els;
+  Node *init;
+  Node *inc;
 
   Var *var;   // used when kind == ND_VAR
   int val;    // used when kind == ND_NUM

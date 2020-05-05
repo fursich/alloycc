@@ -62,6 +62,8 @@ static void gen(Node *node) {
     case ND_FOR: {
       int seq = labelseq++;
 
+      if (node->init)
+        gen(node->init);
       printf(".L.begin.%d:\n", seq);
       if (node->cond) {
         gen(node->cond);
@@ -70,6 +72,8 @@ static void gen(Node *node) {
         printf("  je .L.end.%d\n", seq);
       }
       gen(node->then);
+      if (node->inc)
+        gen(node->inc);
       printf("  jmp .L.begin.%d\n", seq);
       printf(".L.end.%d:\n", seq);
       return;
