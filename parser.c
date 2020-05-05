@@ -52,6 +52,10 @@ static Node *new_node_num(int val) {
 }
 
 static Node *stmt(void);
+
+static Node *return_stmt(void);
+static Node *expr_stmt(void);
+
 static Node *expr(void);
 static Node *assign(void);
 static Node *equality(void);
@@ -75,15 +79,31 @@ ScopedContext *parse() {
   return block;
 }
 
-// stmt = return_statement | expr ";"
+// stmt = return_stmt | expr_stmt
 static Node *stmt() {
   Node *node;
 
   if (consume("return")) {
-    node = new_node_unary(ND_RETURN, expr());
-    expect(";");
+    node = return_stmt();
     return node;
   }
+
+  node = expr_stmt();
+  return node;
+}
+
+// return_stmt = "return" expr
+static Node *return_stmt() {
+  Node *node;
+
+  node = new_node_unary(ND_RETURN, expr());
+  expect(";");
+  return node;
+}
+
+// expr_stmt
+static Node *expr_stmt() {
+  Node *node;
 
   node = new_node_unary(ND_EXPR_STMT, expr());
   expect(";");

@@ -75,7 +75,7 @@ static Token *new_token(TokenKind kind, Token *cur, char *str, int len) {
   return tok;
 }
 
-static bool startswith(char *p, char *q) {
+static bool startswith(char *p, const char *q) {
   return strncmp(p, q, strlen(q)) == 0;
 }
 
@@ -85,6 +85,38 @@ static bool is_alpha(char c) {
 
 static bool is_alnum(char c) {
   return is_alpha(c) || ('0' <= c && c <='9');
+}
+
+static const char *starts_with_reserved(char *p) {
+
+  static const char *keywords[] = {
+    "return",
+  };
+
+  /* Keywords */
+  for (int i = 0; i < sizeof(keywords) / sizeof(*keywords); i++) {
+    int len = strlen(keywords[i]);
+
+    if (startswith(p, keywords[i]) && !is_alnum(p[len]))
+      return keywords[i];
+  }
+
+  static const char *operators[] = {
+    "==",
+    "!=",
+    ">=",
+    "<=",
+  };
+
+  /* Reserved Symbol: Multi-letter punctuators */
+  for (int i = 0; i < sizeof(operators) / sizeof(*operators); i++) {
+    int len = strlen(operators[i]);
+
+    if (startswith(p, operators[i]) && !is_alnum(p[len]))
+      return operators[i];
+  }
+
+  return NULL;
 }
 
 Token *tokenize() {
@@ -99,10 +131,12 @@ Token *tokenize() {
       continue;
     }
 
-    /* Keywords */
-    if (startswith(p, "return") && !is_alnum(p[6])) {
-      cur = new_token(TK_RESERVED, cur, p, 6);
-      p += 6;
+    /* Keywords and multi-letter Symbols */
+    const char *kw = starts_with_reserved(p);
+    if (kw) {
+      int len = strlen(kw);
+      cur = new_token(TK_RESERVED, cur, p, len);
+      p += len;
       continue;
     }
 
@@ -112,13 +146,6 @@ Token *tokenize() {
       while (is_alnum(*p))
         p++;
       cur = new_token(TK_IDENT, cur, p0, p - p0);
-      continue;
-    }
-
-    /* Reserved Symbol: Multi-letter punctuators */
-    if (startswith(p, "==") || startswith(p, "!=") || startswith(p, ">=") || startswith(p, "<=")) {
-      cur = new_token(TK_RESERVED, cur, p, 2);
-      p += 2;
       continue;
     }
 
