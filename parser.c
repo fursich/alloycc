@@ -53,6 +53,7 @@ static Node *new_node_num(int val) {
 
 static Node *stmt(void);
 
+static Node *if_stmt(void);
 static Node *return_stmt(void);
 static Node *expr_stmt(void);
 
@@ -79,9 +80,14 @@ ScopedContext *parse() {
   return block;
 }
 
-// stmt = return_stmt | expr_stmt
+// stmt = if_stmt | return_stmt | expr_stmt
 static Node *stmt() {
   Node *node;
+
+  if (consume("if")) {
+    node = if_stmt();
+    return node;
+  }
 
   if (consume("return")) {
     node = return_stmt();
@@ -89,6 +95,20 @@ static Node *stmt() {
   }
 
   node = expr_stmt();
+  return node;
+}
+
+// if_stmt (without "if") = (cond) then_stmt ("else" els_stmt)
+static Node *if_stmt() {
+  Node *node;
+
+  node = new_node(ND_IF);
+  expect("(");
+  node->cond = expr();
+  expect(")");
+  node->then = stmt();
+  if (consume("else"))
+    node->els = stmt();
   return node;
 }
 

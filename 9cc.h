@@ -55,6 +55,7 @@ typedef enum {
   ND_LT,        // <
   ND_LE,        // <=
 
+  ND_IF,        // "if"
   ND_RETURN,    // "return"
   ND_EXPR_STMT, // statement with expression (w/o return)
   ND_VAR,       // local variables
@@ -75,6 +76,11 @@ struct Node {
 
   Node *lhs;
   Node *rhs;
+
+  // if-statement
+  Node *cond;
+  Node *then;
+  Node *els;
 
   Var *var;   // used when kind == ND_VAR
   int val;    // used when kind == ND_NUM

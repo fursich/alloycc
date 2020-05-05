@@ -18,6 +18,14 @@ assert() {
   fi
 }
 
+assert 1  'foo = 1; if (foo == 1) return foo; return 0;'
+assert 0  'foo = 2; if (foo == 1) return foo; return 0;'
+assert 1  'foo = 1; if (foo == 1) return foo; else return 0;'
+assert 0  'foo = 2; if (foo == 1) return foo; else return 0;'
+assert 1  'foo = 1; bar = 3; if (foo == 1) return 1; else if (bar == 3) return 3; else 10;'
+assert 3  'foo = 2; bar = 3; if (foo == 1) return 1; else if (bar == 3) return 3; return 10;'
+assert 10 'foo = 2; bar = 7; if (foo == 1) return 1; else if (bar == 3) return 3; else return 10;'
+
 assert 1  '_foo = 1; return _foo;'
 assert 2  'foo = bar = 2; return foo;'
 assert 3  'foo = bar = 3; return bar;'

@@ -90,6 +90,8 @@ static bool is_alnum(char c) {
 static const char *starts_with_reserved(char *p) {
 
   static const char *keywords[] = {
+    "if",
+    "else",
     "return",
   };
 
