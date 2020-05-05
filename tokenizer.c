@@ -92,6 +92,7 @@ static const char *starts_with_reserved(char *p) {
   static const char *keywords[] = {
     "if",
     "else",
+    "while",
     "return",
   };
 

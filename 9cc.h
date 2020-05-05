@@ -56,6 +56,7 @@ typedef enum {
   ND_LE,        // <=
 
   ND_IF,        // "if"
+  ND_FOR,       // "for" or "while"
   ND_RETURN,    // "return"
   ND_EXPR_STMT, // statement with expression (w/o return)
   ND_VAR,       // local variables
@@ -77,7 +78,7 @@ struct Node {
   Node *lhs;
   Node *rhs;
 
-  // if-statement
+  // if-statement, while-statement, for-statement
   Node *cond;
   Node *then;
   Node *els;

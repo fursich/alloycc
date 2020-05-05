@@ -54,6 +54,7 @@ static Node *new_node_num(int val) {
 static Node *stmt(void);
 
 static Node *if_stmt(void);
+static Node *while_stmt(void);
 static Node *return_stmt(void);
 static Node *expr_stmt(void);
 
@@ -89,6 +90,11 @@ static Node *stmt() {
     return node;
   }
 
+  if (consume("while")) {
+    node = while_stmt();
+    return node;
+  }
+
   if (consume("return")) {
     node = return_stmt();
     return node;
@@ -109,6 +115,19 @@ static Node *if_stmt() {
   node->then = stmt();
   if (consume("else"))
     node->els = stmt();
+  return node;
+}
+
+// while_stmt (without "while") = (cond) then_stmt
+static Node *while_stmt() {
+  Node *node;
+
+  node = new_node(ND_FOR);
+  expect("(");
+  node->cond = expr();
+  expect(")");
+  node->then = stmt();
+
   return node;
 }
 

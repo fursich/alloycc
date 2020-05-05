@@ -18,6 +18,11 @@ assert() {
   fi
 }
 
+assert 1  'foo = 1; while (foo == 1) return 1; return 0;'
+assert 0  'foo = 2; while (foo == 1) return 1; return 0;'
+assert 1  'foo = 100; while (foo != 1) foo = foo - 1; return foo;'
+assert 42 'foo = 42; bar = 0; while ((foo = foo -1) >= 0) bar = bar + 1; return bar;'
+
 assert 1  'foo = 1; if (foo == 1) return foo; return 0;'
 assert 0  'foo = 2; if (foo == 1) return foo; return 0;'
 assert 1  'foo = 1; if (foo == 1) return foo; else return 0;'
