@@ -63,6 +63,7 @@ typedef enum {
   ND_RETURN,    // "return"
   ND_BLOCK,     // compound statement
   ND_EXPR_STMT, // statement with expression (w/o return)
+  ND_FUNCALL,   // function call
   ND_VAR,       // local variables
   ND_NUM,       // Integer
 } NodeKind;
@@ -91,6 +92,9 @@ struct Node {
 
   // block
   Node *body;
+
+  // Function call
+  char *funcname;
 
   Var *var;   // used when kind == ND_VAR
   int val;    // used when kind == ND_NUM

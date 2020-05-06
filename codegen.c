@@ -39,6 +39,11 @@ static void gen_expr(Node *node) {
   case ND_NUM:
     printf("  push %d\n", node->val);
     return;
+  case ND_FUNCALL:
+    printf("  mov rax, 0\n");
+    printf("  call %s\n", node->funcname);
+    printf("  push rax\n");
+    return;
   case ND_VAR:
     gen_addr(node);
 

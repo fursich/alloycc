@@ -5,7 +5,12 @@ assert() {
   input="$2"
 
   ./debug/9cc "$input" > debug/tmp.s
-  cc -o debug/tmp debug/tmp.s
+  cat <<-FUNC | cc -c -xc -o debug/tmp2.o -
+    int ret1()  { return 1; }
+    int ret42() { return 42; }
+	FUNC
+
+  cc -o debug/tmp debug/tmp.s debug/tmp2.o
 
   ./debug/tmp
   actual="$?"
@@ -17,6 +22,9 @@ assert() {
     exit 1
   fi
 }
+
+assert 1  '{ return ret1(); }'
+assert 42 '{ return ret42(); }'
 
 assert 2  '{ foo = 1; foo = foo * 2; return foo; }'
 assert 42 '{ foo = 42; { bar = foo * 2; bar = bar + 1;} return foo; }'

@@ -68,6 +68,7 @@ static Node *add(void);
 static Node *mul(void);
 static Node *unary(void);
 static Node *primary(void);
+static Node *ident(void);
 
 // scoped_block = stmt*
 ScopedContext *parse() {
@@ -298,17 +299,29 @@ static Node *primary() {
   }
 
   if (token->kind == TK_IDENT) {
-    Var *var = lookup_var(token);
-    if (!var) {
-      char *name = strndup(token->str, token->len);
-      var = new_var(name);
-      var->next = locals;
-      locals = var;
-    }
-    expect_ident();
-
-    return new_node_var(var);
+    return ident();
   }
 
   return new_node_num(expect_number());
+}
+
+// ident = func() | var
+static Node *ident() {
+  Token *tok = expect_ident();
+
+  if (consume("(")) {
+    Node *node = new_node(ND_FUNCALL);
+    node->funcname = strndup(tok->str, tok->len);
+    expect(")");
+    return node;
+  }
+
+  Var *var = lookup_var(tok);
+  if (!var) {
+    char *name = strndup(tok->str, tok->len);
+    var = new_var(name);
+    var->next = locals;
+    locals = var;
+  }
+  return new_node_var(var);
 }
