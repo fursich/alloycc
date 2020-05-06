@@ -86,22 +86,22 @@ ScopedContext *parse() {
 static Node *stmt() {
   Node *node;
 
-  if (consume("if")) {
+  if (equal("if")) {
     node = if_stmt();
     return node;
   }
 
-  if (consume("while")) {
+  if (equal("while")) {
     node = while_stmt();
     return node;
   }
 
-  if (consume("for")) {
+  if (equal("for")) {
     node = for_stmt();
     return node;
   }
 
-  if (consume("return")) {
+  if (equal("return")) {
     node = return_stmt();
     return node;
   }
@@ -110,10 +110,11 @@ static Node *stmt() {
   return node;
 }
 
-// if_stmt (without "if") = (cond) then_stmt ("else" els_stmt)
+// if_stmt = "if" (cond) then_stmt ("else" els_stmt)
 static Node *if_stmt() {
   Node *node;
 
+  expect("if");
   node = new_node(ND_IF);
   expect("(");
   node->cond = expr();
@@ -124,10 +125,11 @@ static Node *if_stmt() {
   return node;
 }
 
-// while_stmt (without "while") = (cond) then_stmt
+// while_stmt = "while" (cond) then_stmt
 static Node *while_stmt() {
   Node *node;
 
+  expect("while");
   node = new_node(ND_FOR);
   expect("(");
   node->cond = expr();
@@ -137,10 +139,11 @@ static Node *while_stmt() {
   return node;
 }
 
-// for_stmt (without "for") = ( init; cond; inc) then_stmt
+// for_stmt = "for" ( init; cond; inc) then_stmt
 static Node *for_stmt() {
   Node *node;
 
+  expect("for");
   node = new_node(ND_FOR);
   expect("(");
   if(!consume(";")) {
@@ -164,6 +167,7 @@ static Node *for_stmt() {
 static Node *return_stmt() {
   Node *node;
 
+  expect("return");
   node = new_node_unary(ND_RETURN, expr());
   expect(";");
   return node;

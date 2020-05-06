@@ -29,19 +29,23 @@ void error_at(char *loc, char *fmt, ...) {
   exit(1);
 }
 
-bool consume(char *op) {
-  if (token->kind != TK_RESERVED ||
-      strlen(op) != token->len ||
-      strncmp(token->str, op, token->len))
-    return false;
-  token = token->next;
-  return true;
+/* compare token name (str) without consuming it (no checks are done against its kind) */
+bool equal(char *op) {
+  return strlen(op) == token->len && !strncmp(token->str, op, token->len);
 }
 
+/* consume token if its name (str) equals to the given *op (no checks against its kind) */
+bool consume(char *op) {
+  if (equal(op)) {
+    token = token->next;
+    return true;
+  }
+  return false;
+}
+
+/* assert token name (str) equals to *op and consumes that token (no checks against its kind) */
 void expect(char *op) {
-  if (token->kind != TK_RESERVED ||
-      strlen(op) != token->len ||
-      strncmp(token->str, op, token->len))
+  if (!equal(op))
     error_at(token->str, "'%s'ではありません", op);
   token = token->next;
 }
