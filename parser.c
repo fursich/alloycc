@@ -51,6 +51,7 @@ static Node *new_node_num(int val) {
   return node;
 }
 
+static Node *block_stmt(void);
 static Node *stmt(void);
 
 static Node *if_stmt(void);
@@ -74,6 +75,8 @@ ScopedContext *parse() {
   Node *cur = &head;
 
   while (!at_eof())
+    // TODO: might treat it as topline block-statements
+    // (consider how to handle the endings for toplevel and nested levels, e.g. "}" | eof
     cur = cur->next = stmt();
 
   ScopedContext *block = calloc(1, sizeof(ScopedContext));
@@ -82,7 +85,23 @@ ScopedContext *parse() {
   return block;
 }
 
-// stmt = if_stmt | return_stmt | expr_stmt
+// block_stmt = stmt*
+// TODO: allow blocks to have their own local vars
+static Node *block_stmt() {
+  Node head = {};
+  Node *cur = &head;
+
+  expect("{");
+  while (!consume("}"))
+    cur = cur->next = stmt();
+
+  Node *node = new_node(ND_BLOCK);
+  node->body = head.next;
+
+  return node;
+}
+
+// stmt = if_stmt | return_stmt | { block_stmt } | expr_stmt
 static Node *stmt() {
   Node *node;
 
@@ -103,6 +122,11 @@ static Node *stmt() {
 
   if (equal("return")) {
     node = return_stmt();
+    return node;
+  }
+
+  if (equal("{")) {
+    node = block_stmt();
     return node;
   }
 

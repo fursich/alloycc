@@ -18,6 +18,12 @@ assert() {
   fi
 }
 
+assert 2  '{ foo = 1; foo = foo * 2; return foo; }'
+assert 42 'foo = 42; { bar = foo * 2; bar = bar + 1;} return foo;'
+assert 0  'if (1 != 1) { foo = 1; return foo; } else { foo = 0; return foo; }'
+assert 1  'if (1 == 1) { foo = 1; return foo; } else { foo = 0; return foo; }'
+
+
 assert 16 'foo = 1; for (i=0; i<4; i = i + 1) foo = foo * 2; return foo;'
 assert 10 'i = 0; for (; i<10; i = i + 1) 1 == 1; return i;'
 assert 42 'for (i = 0; i<42;) i = i + 1; return i;'

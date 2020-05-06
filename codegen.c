@@ -83,6 +83,14 @@ static void gen(Node *node) {
       printf("  pop rax\n");
       printf("  jmp .L.return\n");
       return;
+    case ND_BLOCK: {
+      Node *stmt = node->body;
+      while(stmt) {
+        gen(stmt);
+        stmt = stmt->next;
+      }
+      return;
+    }
     case ND_EXPR_STMT:
       gen(node->lhs);
       printf("  add rsp, 8\n");
