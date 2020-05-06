@@ -75,9 +75,7 @@ ScopedContext *parse() {
   Node *cur = &head;
 
   while (!at_eof())
-    // TODO: might treat it as topline block-statements
-    // (consider how to handle the endings for toplevel and nested levels, e.g. "}" | eof
-    cur = cur->next = stmt();
+    cur = cur->next = block_stmt();
 
   ScopedContext *block = calloc(1, sizeof(ScopedContext));
   block->node = head.next;
