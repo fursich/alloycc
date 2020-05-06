@@ -15,90 +15,31 @@ static void gen_lval(Node *node) {
   printf("  push rax\n");
 }
 
-static void gen(Node *node) {
+static void gen_expr(Node *node) {
   switch (node->kind) {
-    case ND_NUM:
-      printf("  push %d\n", node->val);
-      return;
-    case ND_VAR:
-      gen_lval(node);
+  case ND_ASSIGN:
+    gen_lval(node->lhs);
+    gen_expr(node->rhs);
 
-      printf("  pop rax\n");
-      printf("  mov rax, [rax]\n");
-      printf("  push rax\n");
-      return;
-    case ND_ASSIGN:
-      gen_lval(node->lhs);
-      gen(node->rhs);
+    printf("  pop rdi\n");
+    printf("  pop rax\n");
+    printf("  mov [rax], rdi\n");
+    printf("  push rdi\n");
+    return;
+  case ND_NUM:
+    printf("  push %d\n", node->val);
+    return;
+  case ND_VAR:
+    gen_lval(node);
 
-      printf("  pop rdi\n");
-      printf("  pop rax\n");
-      printf("  mov [rax], rdi\n");
-      printf("  push rdi\n");
-      return;
-    case ND_IF: {
-      int seq = labelseq++;
-
-      if (node->els) {
-        gen(node->cond);
-        printf("  pop rax\n");
-        printf("  cmp rax, 0\n");
-        printf("  je .L.else.%d\n", seq);
-        gen(node->then);
-        printf("  jmp .L.end.%d\n", seq);
-        printf(".L.else.%d:\n", seq);
-        gen(node->els);
-        printf(".L.end.%d:\n", seq);
-      } else {
-        gen(node->cond);
-        printf("  pop rax\n");
-        printf("  cmp rax, 0\n");
-        printf("  je .L.end.%d\n", seq);
-        gen(node->then);
-        printf(".L.end.%d:\n", seq);
-      }
-      return;
-    }
-    case ND_FOR: {
-      int seq = labelseq++;
-
-      if (node->init)
-        gen(node->init);
-      printf(".L.begin.%d:\n", seq);
-      if (node->cond) {
-        gen(node->cond);
-        printf("  pop rax\n");
-        printf("  cmp rax, 0\n");
-        printf("  je .L.end.%d\n", seq);
-      }
-      gen(node->then);
-      if (node->inc)
-        gen(node->inc);
-      printf("  jmp .L.begin.%d\n", seq);
-      printf(".L.end.%d:\n", seq);
-      return;
-    }
-    case ND_RETURN:
-      gen(node->lhs);
-      printf("  pop rax\n");
-      printf("  jmp .L.return\n");
-      return;
-    case ND_BLOCK: {
-      Node *stmt = node->body;
-      while(stmt) {
-        gen(stmt);
-        stmt = stmt->next;
-      }
-      return;
-    }
-    case ND_EXPR_STMT:
-      gen(node->lhs);
-      printf("  add rsp, 8\n");
-      return;
+    printf("  pop rax\n");
+    printf("  mov rax, [rax]\n");
+    printf("  push rax\n");
+    return;
   }
 
-  gen(node->lhs);
-  gen(node->rhs);
+  gen_expr(node->lhs);
+  gen_expr(node->rhs);
 
   printf("  pop rdi\n"); // rhs
   printf("  pop rax\n");  // lhs
@@ -137,9 +78,77 @@ static void gen(Node *node) {
     printf("  setle al\n");
     printf("  movzx rax, al\n");
     break;
+  default:
+    error("不正な式です\n");
   }
 
   printf("  push rax\n");
+}
+
+static void gen_stmt(Node *node) {
+  switch (node->kind) {
+  case ND_IF: {
+    int seq = labelseq++;
+
+    if (node->els) {
+      gen_expr(node->cond);
+      printf("  pop rax\n");
+      printf("  cmp rax, 0\n");
+      printf("  je .L.else.%d\n", seq);
+      gen_stmt(node->then);
+      printf("  jmp .L.end.%d\n", seq);
+      printf(".L.else.%d:\n", seq);
+      gen_stmt(node->els);
+      printf(".L.end.%d:\n", seq);
+    } else {
+      gen_expr(node->cond);
+      printf("  pop rax\n");
+      printf("  cmp rax, 0\n");
+      printf("  je .L.end.%d\n", seq);
+      gen_stmt(node->then);
+      printf(".L.end.%d:\n", seq);
+    }
+    return;
+  }
+  case ND_FOR: {
+    int seq = labelseq++;
+
+    if (node->init)
+      gen_stmt(node->init);
+    printf(".L.begin.%d:\n", seq);
+    if (node->cond) {
+      gen_expr(node->cond);
+      printf("  pop rax\n");
+      printf("  cmp rax, 0\n");
+      printf("  je .L.end.%d\n", seq);
+    }
+    gen_stmt(node->then);
+    if (node->inc)
+      gen_stmt(node->inc);
+    printf("  jmp .L.begin.%d\n", seq);
+    printf(".L.end.%d:\n", seq);
+    return;
+  }
+  case ND_RETURN:
+    gen_expr(node->lhs);
+    printf("  pop rax\n");
+    printf("  jmp .L.return\n");
+    return;
+  case ND_BLOCK: {
+    Node *stmt = node->body;
+    while(stmt) {
+      gen_stmt(stmt);
+      stmt = stmt->next;
+    }
+    return;
+  }
+  case ND_EXPR_STMT:
+    gen_expr(node->lhs);
+    printf("  add rsp, 8\n");
+    return;
+  default:
+    error("不正な文です\n");
+  }
 }
 
 void codegen(ScopedContext *block) {
@@ -153,7 +162,7 @@ void codegen(ScopedContext *block) {
   printf("  sub rsp, %d\n", block->stack_size); // TODO: reserve registers (R12-R15) as well
 
   for (Node *n = block->node; n; n = n->next)
-    gen(n);
+    gen_stmt(n);
 
   // epilogue
   printf(".L.return:\n");
