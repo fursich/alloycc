@@ -68,7 +68,8 @@ static Node *add(void);
 static Node *mul(void);
 static Node *unary(void);
 static Node *primary(void);
-static Node *ident(void);
+static Node *func_or_var(void);
+static Node *arg_list(void);
 
 // scoped_block = stmt*
 ScopedContext *parse() {
@@ -289,7 +290,7 @@ static Node *unary() {
   return primary();
 }
 
-// primary = num | ident | "(" expr ")"
+// primary = "(" expr ")" | func_or_var | num
 static Node *primary() {
 
   if (consume("(")) {
@@ -299,19 +300,20 @@ static Node *primary() {
   }
 
   if (token->kind == TK_IDENT) {
-    return ident();
+    return func_or_var();
   }
 
   return new_node_num(expect_number());
 }
 
-// ident = func() | var
-static Node *ident() {
+// func_or_var = func(arg_list) | var
+static Node *func_or_var() {
   Token *tok = expect_ident();
 
   if (consume("(")) {
     Node *node = new_node(ND_FUNCALL);
     node->funcname = strndup(tok->str, tok->len);
+    node->args = arg_list();
     expect(")");
     return node;
   }
@@ -324,4 +326,18 @@ static Node *ident() {
     locals = var;
   }
   return new_node_var(var);
+}
+
+// arg_list = (expr (, expr)*)?
+static Node *arg_list() {
+  Node head = {0};
+  Node *cur = &head;
+
+  while (!equal(")")) {
+    if (cur != &head)
+      expect(",");
+    cur = cur->next = expr();
+  }
+
+  return head.next;
 }

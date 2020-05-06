@@ -8,6 +8,8 @@ assert() {
   cat <<-FUNC | cc -c -xc -o debug/tmp2.o -
     int ret1()  { return 1; }
     int ret42() { return 42; }
+    int echo_self(int a) { return a; }
+    int sum3(int a, int b, int c) { return a + b + c; }
 	FUNC
 
   cc -o debug/tmp debug/tmp.s debug/tmp2.o
@@ -22,6 +24,10 @@ assert() {
     exit 1
   fi
 }
+
+assert 3  '{ return echo_self(3); }'
+assert 42 '{ return sum3(7, 12, 23); }'
+assert 7  '{ foo = 3; bar = 2; baz = sum3(foo, -bar, foo * bar); return baz; }'
 
 assert 1  '{ return ret1(); }'
 assert 42 '{ return ret42(); }'

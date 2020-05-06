@@ -4,6 +4,9 @@
 // Code generator
 //
 
+static void gen_expr(Node *node);
+static void gen_stmt(Node *node);
+
 static int labelseq = 1;
 
 static void gen_addr(Node *node) {
@@ -28,6 +31,23 @@ static void store() {
   printf("  push rdi\n");
 }
 
+static const char *argreg[] = {
+  "rdi", "rsi", "rdx", "rcx", "r8", "r9"
+};
+
+static void load_args(Node *args) {
+  int argc = 0;
+
+  for(Node *cur = args; cur != NULL; cur = cur->next) {
+    gen_expr(cur);
+    argc++;
+  }
+
+  for(int i = 0; i < argc; i++) {
+    printf("  pop %s\n", argreg[argc - 1 - i]);
+  }
+}
+
 static void gen_expr(Node *node) {
   switch (node->kind) {
   case ND_ASSIGN:
@@ -39,11 +59,14 @@ static void gen_expr(Node *node) {
   case ND_NUM:
     printf("  push %d\n", node->val);
     return;
-  case ND_FUNCALL:
+  case ND_FUNCALL: {
+    load_args(node->args);
+
     printf("  mov rax, 0\n");
     printf("  call %s\n", node->funcname);
     printf("  push rax\n");
     return;
+  }
   case ND_VAR:
     gen_addr(node);
 
