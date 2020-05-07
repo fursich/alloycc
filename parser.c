@@ -6,6 +6,18 @@
 
 Var *locals = NULL;
 
+static Function *new_function(char *name) {
+  Function *func = calloc(1, sizeof(Function));
+  func->name = name;
+  return func;
+}
+
+static ScopedContext *new_context(Var *lcl) {
+  ScopedContext *ctx = calloc(1, sizeof(ScopedContext));
+  ctx->locals = lcl;
+  return ctx;
+}
+
 static Node *new_node(NodeKind kind) {
   Node *node = calloc(1, sizeof(Node));
   node->kind = kind;
@@ -51,6 +63,7 @@ static Node *new_node_num(int val) {
   return node;
 }
 
+static Function *funcdef(void);
 static Node *block_stmt(void);
 static Node *stmt(void);
 
@@ -71,18 +84,31 @@ static Node *primary(void);
 static Node *func_or_var(void);
 static Node *arg_list(void);
 
-// scoped_block = stmt*
-ScopedContext *parse() {
-  Node head = {0};
-  Node *cur = &head;
+// program = funcdef*
+Function *parse() {
+  Function head = {0};
+  Function *cur = &head;
 
   while (!at_eof())
-    cur = cur->next = block_stmt();
+    cur = cur->next = funcdef();
 
-  ScopedContext *block = calloc(1, sizeof(ScopedContext));
-  block->node = head.next;
-  block->locals = locals;
-  return block;
+  return head.next;
+}
+
+// funcdef = ident() { block_stmt }
+static Function *funcdef() {
+  char *name = expect_ident();
+  Function *func = new_function(name);
+
+  expect("(");
+  expect(")");
+
+  // TODO: avoid using global vars, or refresh the pointer every time before new function starts
+  locals = NULL;
+  func->node = block_stmt();
+  func->context = new_context(locals);
+
+  return func;
 }
 
 // block_stmt = stmt*

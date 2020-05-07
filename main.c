@@ -15,15 +15,19 @@ int main(int argc, char **argv) {
 
   user_input = argv[1];
   token = tokenize();
-  ScopedContext *block = parse();
+  Function *func = parse();
 
-  int offset = 0;
-  for (Var *var = block->locals; var; var = var->next) {
-    offset += 8;
-    var->offset = offset;
+  for (Function *fn = func; fn; fn = fn->next) {
+    ScopedContext *ctx = fn->context;
+    int offset = 0;
+
+    for (Var *var = ctx->locals; var; var = var->next) {
+      offset += 8;
+      var->offset = offset;
+    }
+    ctx->stack_size = align_to(offset, 16);
   }
-  block->stack_size = align_to(offset, 16);
 
-  codegen(block);
+  codegen(func);
   return 0;
 }

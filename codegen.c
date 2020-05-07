@@ -8,6 +8,7 @@ static void gen_expr(Node *node);
 static void gen_stmt(Node *node);
 
 static int labelseq = 1;
+static char *funcname;
 
 static void gen_addr(Node *node) {
   if (node->kind != ND_VAR)
@@ -168,7 +169,7 @@ static void gen_stmt(Node *node) {
   case ND_RETURN:
     gen_expr(node->lhs);
     printf("  pop rax\n");
-    printf("  jmp .L.return\n");
+    printf("  jmp .L.return.%s\n", funcname);
     return;
   case ND_BLOCK: {
     Node *stmt = node->body;
@@ -187,23 +188,30 @@ static void gen_stmt(Node *node) {
   }
 }
 
-void codegen(ScopedContext *block) {
+void codegen(Function *func) {
   printf(".intel_syntax noprefix\n");
   printf(".global main\n");
-  printf("main:\n");
 
-  // prologue
-  printf("  push rbp\n");
-  printf("  mov rbp, rsp\n");
-  printf("  sub rsp, %d\n", block->stack_size); // TODO: reserve registers (R12-R15) as well
+  for(Function *fn = func; fn; fn = fn->next) {
+    ScopedContext *ctx = fn->context;
+    funcname = fn->name;
 
-  for (Node *n = block->node; n; n = n->next)
-    gen_stmt(n);
+    // label of the function
+    printf("%s:\n", funcname);
 
-  // epilogue
-  printf(".L.return:\n");
-  printf("  mov rsp, rbp\n");
-  printf("  pop rbp\n");
+    // prologue
+    printf("  push rbp\n");
+    printf("  mov rbp, rsp\n");
+    printf("  sub rsp, %d\n", ctx->stack_size); // TODO: reserve registers (R12-R15) as well
 
-  printf("  ret\n");
+    for (Node *n = fn->node; n; n = n->next)
+      gen_stmt(n);
+
+    // epilogue
+    printf(".L.return.%s:\n", funcname);
+    printf("  mov rsp, rbp\n");
+    printf("  pop rbp\n");
+
+    printf("  ret\n");
+  }
 }

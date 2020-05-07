@@ -103,15 +103,22 @@ struct Node {
 
 typedef struct ScopedContext ScopedContext;
 struct ScopedContext {
-  Node *node;
   Var *locals;
   int stack_size;
 };
 
-ScopedContext *parse(void);
+typedef struct Function Function;
+struct Function {
+  Function *next;
+  char *name;
+  Node *node;
+  ScopedContext *context;
+};
+
+Function *parse(void);
 
 //
 // codegen.c
 //
 
-void codegen(ScopedContext *block);
+void codegen(Function *func);
