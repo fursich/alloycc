@@ -50,12 +50,12 @@ void expect(char *op) {
   token = token->next;
 }
 
-Token *expect_ident() {
+char *expect_ident() {
   if (token->kind != TK_IDENT)
     error_at(token->str, "変数ではありません");
-  Token *tok = token;
+  char *name = strndup(token->str, token->len);
   token = token->next;
-  return tok;
+  return name;
 }
 
 int expect_number() {

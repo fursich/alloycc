@@ -37,9 +37,9 @@ static Node *new_node_var(Var *var) {
   return node;
 }
 
-static Var *lookup_var(Token *tok) {
+static Var *lookup_var(char *name) {
   for (Var *var = locals; var; var = var->next) {
-    if ((strlen(var->name) == tok->len) && !strncmp(var->name, tok->str, tok->len))
+    if (!strcmp(var->name, name))
       return var;
   }
   return NULL;
@@ -308,19 +308,18 @@ static Node *primary() {
 
 // func_or_var = func(arg_list) | var
 static Node *func_or_var() {
-  Token *tok = expect_ident();
+  char *name = expect_ident();
 
   if (consume("(")) {
     Node *node = new_node(ND_FUNCALL);
-    node->funcname = strndup(tok->str, tok->len);
+    node->funcname = name;
     node->args = arg_list();
     expect(")");
     return node;
   }
 
-  Var *var = lookup_var(tok);
+  Var *var = lookup_var(name);
   if (!var) {
-    char *name = strndup(tok->str, tok->len);
     var = new_var(name);
     var->next = locals;
     locals = var;

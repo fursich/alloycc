@@ -34,7 +34,7 @@ bool equal(char *op);
 void skip(char *op);
 bool consume(char *op);
 void expect(char *op);
-Token *expect_ident(void);
+char *expect_ident(void);
 int expect_number(void);
 bool at_eof(void);
 Token *tokenize(void);
