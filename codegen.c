@@ -6,17 +6,26 @@
 
 static void gen_expr(Node *node);
 static void gen_stmt(Node *node);
+static void gen_addr(Node *node);
+static void load(void);
+static void store(void);
 
 static int labelseq = 1;
 static char *funcname;
 
 static void gen_addr(Node *node) {
-  if (node->kind != ND_VAR)
-    error("左辺値ではありません\n");
+  switch (node->kind) {
+    case ND_VAR:
+      printf("  mov rax, rbp\n");
+      printf("  sub rax, %d\n", node->var->offset);
+      printf("  push rax\n");
+      return;
+    case ND_DEREF: // *(foo + 8) = 123; (DEREF as lvalue)
+      gen_expr(node->lhs);
+      return;
+  }
 
-  printf("  mov rax, rbp\n");
-  printf("  sub rax, %d\n", node->var->offset);
-  printf("  push rax\n");
+  error("左辺値ではありません\n");
 }
 
 static void load() {
@@ -79,6 +88,13 @@ static void gen_expr(Node *node) {
   case ND_VAR:
     gen_addr(node);
 
+    load();
+    return;
+  case ND_ADDR:
+    gen_addr(node->lhs);
+    return;
+  case ND_DEREF:
+    gen_expr(node->lhs);
     load();
     return;
   }
