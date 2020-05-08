@@ -49,6 +49,14 @@ static void load_args(Node *args) {
   }
 }
 
+static void store_args(Var *params) {
+  int i = 0;
+
+  for (Var *arg = params; arg; arg = arg->next) {
+    printf("  mov [rbp-%d], %s\n", arg->offset, argreg[i++]);
+  }
+}
+
 static void gen_expr(Node *node) {
   switch (node->kind) {
   case ND_ASSIGN:
@@ -203,6 +211,8 @@ void codegen(Function *func) {
     printf("  push rbp\n");
     printf("  mov rbp, rsp\n");
     printf("  sub rsp, %d\n", ctx->stack_size); // TODO: reserve registers (R12-R15) as well
+
+    store_args(fn->params);
 
     for (Node *n = fn->node; n; n = n->next)
       gen_stmt(n);

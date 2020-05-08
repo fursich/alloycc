@@ -25,6 +25,23 @@ assert() {
   fi
 }
 
+assert 9  'inc(x) { return x + 1; } main() { return inc(8); }'
+assert 7  'adder(p, q, r, x, y, z) { return p + q + r + x + y + z; } main() { return adder(2, -5, 3, 3, -4, 8); }'
+assert 89 '
+  fibo(n) {
+    if (n <= 0) {
+      return 0;
+    }
+    if (n == 1) {
+      return 1;
+    }
+    return fibo(n - 1) + fibo(n - 2);
+  }
+  main() {
+    return fibo(11);
+  }
+'
+
 assert 3  'foo() { return 3; } main() { return foo(); }'
 assert 4  'foo() { hoge = 1; return hoge; } main() { bar = 3; return foo() + bar; }'
 assert 42 'foo() { return 14; } bar() { return 4; } baz() { return 7; } main() { return foo() + bar() * baz(); }'

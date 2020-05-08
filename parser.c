@@ -64,6 +64,8 @@ static Node *new_node_num(int val) {
 }
 
 static Function *funcdef(void);
+static Var *read_var_list(void);
+
 static Node *block_stmt(void);
 static Node *stmt(void);
 
@@ -95,20 +97,38 @@ Function *parse() {
   return head.next;
 }
 
-// funcdef = ident() { block_stmt }
+// funcdef = ident(var_list) { block_stmt }
 static Function *funcdef() {
+  locals = NULL;
+
   char *name = expect_ident();
   Function *func = new_function(name);
 
   expect("(");
+  Var *var = read_var_list();
+  func->params = var;
+  locals = var;
   expect(")");
 
-  // TODO: avoid using global vars, or refresh the pointer every time before new function starts
-  locals = NULL;
   func->node = block_stmt();
   func->context = new_context(locals);
 
   return func;
+}
+
+// var_list = (ident (, ident)*)?
+static Var *read_var_list() {
+  Var head = {0};
+  Var *cur = &head;
+
+  while (!equal(")")) {
+    if (cur != &head)
+      expect(",");
+    char *name = expect_ident();
+    cur = cur->next = new_var(name);
+  }
+
+  return head.next;
 }
 
 // block_stmt = stmt*
