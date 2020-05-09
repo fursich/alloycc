@@ -141,11 +141,12 @@ static Node *declaration() {
   return blk;
 }
 
-
-// funcdef = ident(var_list) { block_stmt }
+// funcdef = typedef ident(var_list) { block_stmt }
+// TODO: consider poiter-type
 static Function *funcdef() {
   locals = NULL;
 
+  Type *ty = typespec(); // TODO: store type info
   char *name = expect_ident();
   Function *func = new_function(name);
 
