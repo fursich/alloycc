@@ -68,7 +68,7 @@ static Type *typespec(void);
 static Node *declaration(void);
 
 static Function *funcdef(void);
-static Var *read_var_list(void);
+static Var *func_params(void);
 
 static Node *block_stmt(void);
 static Node *stmt(void);
@@ -150,7 +150,7 @@ static Function *funcdef() {
   Function *func = new_function(name);
 
   expect("(");
-  Var *var = read_var_list();
+  Var *var = func_params();
   func->params = var;
   locals = var;
   expect(")");
@@ -161,14 +161,16 @@ static Function *funcdef() {
   return func;
 }
 
-// var_list = (ident (, ident)*)?
-static Var *read_var_list() {
+// func-params = param, ("," param)*
+// param = typespec declarator
+static Var *func_params() {
   Var head = {0};
   Var *cur = &head;
 
   while (!equal(")")) {
     if (cur != &head)
       expect(",");
+    Type *ty = typespec(); // TODO: store type info
     char *name = expect_ident();
     cur = cur->next = new_var(name);
   }

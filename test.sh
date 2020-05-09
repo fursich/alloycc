@@ -38,10 +38,10 @@ assert 3  'main() { int x = 7, y = 5; *(&x + 8) = 3; return y; }'
 assert 4  'main() { int x = 7, y = 5; *(&y - 8) = 4; return x; }'
 assert 5  'main() { int x = 7, y = 5; *(&y - 8) = 4; return y; }'
 
-assert 9  'inc(x) { return x + 1; } main() { return inc(8); }'
-assert 7  'adder(p, q, r, x, y, z) { return p + q + r + x + y + z; } main() { return adder(2, -5, 3, 3, -4, 8); }'
+assert 9  'inc(int x) { return x + 1; } main() { return inc(8); }'
+assert 7  'adder(int p, int q, int r, int x, int y, int z) { return p + q + r + x + y + z; } main() { return adder(2, -5, 3, 3, -4, 8); }'
 assert 89 '
-  fibo(n) {
+  fibo(int n) {
     if (n <= 0) {
       return 0;
     }
