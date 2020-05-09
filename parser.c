@@ -64,6 +64,9 @@ static Node *new_node_num(int val, Token *token) {
   return node;
 }
 
+static Type *typespec(void);
+static Node *declaration(void);
+
 static Function *funcdef(void);
 static Var *read_var_list(void);
 
@@ -96,6 +99,34 @@ Function *parse() {
     cur = cur->next = funcdef();
 
   return head.next;
+}
+
+static Type *typespec() {
+  expect("int");
+  return ty_int;
+}
+
+// declaration = typespec declarator ( = expr)? ";"
+static Node *declaration() {
+  Token *start = token;
+
+  Type *ty = typespec(); // TODO: store type info
+  char *name = expect_ident();
+
+  // No scopes implemehted, so it will simply overwrite old definition
+  // if duplicated definition occurs
+  // (no checks using lookup_var()
+  Var *var = new_var(name); // TODO: use type info * consider args as well
+  var->next = locals;
+  locals = var;
+  Node *node = new_node_var(var, start);
+
+  if (consume("="))
+    node = new_node_binary(ND_ASSIGN, node, assign(), start);
+
+  expect(";");
+
+  return new_node_unary(ND_EXPR_STMT, node, start);
 }
 
 // funcdef = ident(var_list) { block_stmt }
@@ -141,7 +172,10 @@ static Node *block_stmt() {
 
   expect("{");
   while (!consume("}"))
-    cur = cur->next = stmt();
+    if (equal("int"))
+      cur = cur->next = declaration();
+    else
+      cur = cur->next = stmt();
 
   Node *node = new_node(ND_BLOCK, start);
   node->body = head.next;
@@ -386,9 +420,7 @@ static Node *func_or_var() {
 
   Var *var = lookup_var(name);
   if (!var) {
-    var = new_var(name);
-    var->next = locals;
-    locals = var;
+    error_tok(start, "undefined variable");
   }
   return new_node_var(var, start);
 }

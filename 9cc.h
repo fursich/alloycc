@@ -128,3 +128,18 @@ Function *parse(void);
 //
 
 void codegen(Function *func);
+
+//
+// type.c
+//
+typedef enum {
+  TY_INT,
+} TypeKind;
+
+typedef struct Type Type;
+struct Type {
+  TypeKind kind;
+  Type *base;
+};
+
+extern Type *ty_int;

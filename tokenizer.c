@@ -110,6 +110,7 @@ static const char *starts_with_reserved(char *p) {
     "while",
     "for",
     "return",
+    "int",
   };
 
   /* Keywords */
