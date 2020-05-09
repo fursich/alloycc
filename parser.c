@@ -106,28 +106,41 @@ static Type *typespec() {
   return ty_int;
 }
 
-// declaration = typespec declarator ( = expr)? ";"
+// declaration = typespec (declarator ( = expr)? ( "," declarator ( = expr)? )* )? ";"
 static Node *declaration() {
-  Token *start = token;
+  Node head = {};
+  Node *cur = &head;
+  Token *start_decl = token;
 
   Type *ty = typespec(); // TODO: store type info
-  char *name = expect_ident();
 
-  // No scopes implemehted, so it will simply overwrite old definition
-  // if duplicated definition occurs
-  // (no checks using lookup_var()
-  Var *var = new_var(name); // TODO: use type info * consider args as well
-  var->next = locals;
-  locals = var;
-  Node *node = new_node_var(var, start);
+  while(!consume(";")) {
+    if (cur != &head)
+      expect(",");
 
-  if (consume("="))
-    node = new_node_binary(ND_ASSIGN, node, assign(), start);
+    Token *start = token;
+    char *name = expect_ident();
 
-  expect(";");
+    // No scopes implemehted, so it will simply overwrite old definition
+    // if duplicated definition occurs
+    // (no checks using lookup_var()
+    Var *var = new_var(name); // TODO: use type info * consider args as well
+    var->next = locals;
+    locals = var;
+    Node *node = new_node_var(var, start);
 
-  return new_node_unary(ND_EXPR_STMT, node, start);
+    if (consume("="))
+      node = new_node_binary(ND_ASSIGN, node, assign(), start);
+
+    cur = cur->next = new_node_unary(ND_EXPR_STMT, node, start);
+  }
+
+  Node *blk = new_node(ND_BLOCK, start_decl);
+  blk->body = head.next;
+
+  return blk;
 }
+
 
 // funcdef = ident(var_list) { block_stmt }
 static Function *funcdef() {
