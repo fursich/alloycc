@@ -25,7 +25,7 @@ static void gen_addr(Node *node) {
       return;
   }
 
-  error("左辺値ではありません\n");
+  error_tok(node->token, "not an lvalue");
 }
 
 static void load() {
@@ -140,7 +140,7 @@ static void gen_expr(Node *node) {
     printf("  movzx rax, al\n");
     break;
   default:
-    error("不正な式です\n");
+    error_tok(node->token, "invalid expression");
   }
 
   printf("  push rax\n");
@@ -208,7 +208,7 @@ static void gen_stmt(Node *node) {
     printf("  add rsp, 8\n");
     return;
   default:
-    error("不正な文です\n");
+    error_tok(node->token, "invalid statement");
   }
 }
 

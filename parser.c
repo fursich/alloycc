@@ -18,9 +18,10 @@ static ScopedContext *new_context(Var *lcl) {
   return ctx;
 }
 
-static Node *new_node(NodeKind kind) {
+static Node *new_node(NodeKind kind, Token *token) {
   Node *node = calloc(1, sizeof(Node));
   node->kind = kind;
+  node->token = token;
   return node;
 }
 
@@ -30,21 +31,21 @@ static Var *new_var(char *name) {
   return var;
 }
 
-static Node *new_node_unary(NodeKind kind, Node *lhs) {
-  Node *node = new_node(kind);
+static Node *new_node_unary(NodeKind kind, Node *lhs, Token *token) {
+  Node *node = new_node(kind, token);
   node->lhs = lhs;
   return node;
 }
 
-static Node *new_node_binary(NodeKind kind, Node *lhs, Node *rhs) {
-  Node *node = new_node(kind);
+static Node *new_node_binary(NodeKind kind, Node *lhs, Node *rhs, Token *token) {
+  Node *node = new_node(kind, token);
   node->lhs = lhs;
   node->rhs = rhs;
   return node;
 }
 
-static Node *new_node_var(Var *var) {
-  Node *node = new_node(ND_VAR);
+static Node *new_node_var(Var *var, Token *token) {
+  Node *node = new_node(ND_VAR, token);
   node->var = var;
   return node;
 }
@@ -57,8 +58,8 @@ static Var *lookup_var(char *name) {
   return NULL;
 }
 
-static Node *new_node_num(int val) {
-  Node *node = new_node(ND_NUM);
+static Node *new_node_num(int val, Token *token) {
+  Node *node = new_node(ND_NUM, token);
   node->val = val;
   return node;
 }
@@ -136,12 +137,13 @@ static Var *read_var_list() {
 static Node *block_stmt() {
   Node head = {};
   Node *cur = &head;
+  Token *start = token;
 
   expect("{");
   while (!consume("}"))
     cur = cur->next = stmt();
 
-  Node *node = new_node(ND_BLOCK);
+  Node *node = new_node(ND_BLOCK, start);
   node->body = head.next;
 
   return node;
@@ -183,9 +185,10 @@ static Node *stmt() {
 // if_stmt = "if" (cond) then_stmt ("else" els_stmt)
 static Node *if_stmt() {
   Node *node;
+  Token *start = token;
 
   expect("if");
-  node = new_node(ND_IF);
+  node = new_node(ND_IF, start);
   expect("(");
   node->cond = expr();
   expect(")");
@@ -198,9 +201,10 @@ static Node *if_stmt() {
 // while_stmt = "while" (cond) then_stmt
 static Node *while_stmt() {
   Node *node;
+  Token *start = token;
 
   expect("while");
-  node = new_node(ND_FOR);
+  node = new_node(ND_FOR, start);
   expect("(");
   node->cond = expr();
   expect(")");
@@ -212,12 +216,13 @@ static Node *while_stmt() {
 // for_stmt = "for" ( init; cond; inc) then_stmt
 static Node *for_stmt() {
   Node *node;
+  Token *start = token;
 
   expect("for");
-  node = new_node(ND_FOR);
+  node = new_node(ND_FOR, start);
   expect("(");
   if(!consume(";")) {
-    node->init = new_node_unary(ND_EXPR_STMT, expr());
+    node->init = new_node_unary(ND_EXPR_STMT, expr(), token);
     expect(";");
   }
   if(!consume(";")) {
@@ -225,7 +230,7 @@ static Node *for_stmt() {
     expect(";");
   }
   if(!consume(")")) {
-    node->inc = new_node_unary(ND_EXPR_STMT, expr());
+    node->inc = new_node_unary(ND_EXPR_STMT, expr(), token);
     expect(")");
   }
   node->then = stmt();
@@ -236,9 +241,10 @@ static Node *for_stmt() {
 // return_stmt = "return" expr
 static Node *return_stmt() {
   Node *node;
+  Token *start = token;
 
   expect("return");
-  node = new_node_unary(ND_RETURN, expr());
+  node = new_node_unary(ND_RETURN, expr(), start);
   expect(";");
   return node;
 }
@@ -246,8 +252,9 @@ static Node *return_stmt() {
 // expr_stmt
 static Node *expr_stmt() {
   Node *node;
+  Token *start = token;
 
-  node = new_node_unary(ND_EXPR_STMT, expr());
+  node = new_node_unary(ND_EXPR_STMT, expr(), start);
   expect(";");
   return node;
 }
@@ -260,8 +267,10 @@ static Node *expr() {
 // assign = equality ("=" assign)?
 static Node *assign() {
   Node *node = equality();
+  Token *start = token;
+
   if (consume("="))
-    node = new_node_binary(ND_ASSIGN, node, assign());
+    node = new_node_binary(ND_ASSIGN, node, assign(), start);
 
   return node;
 }
@@ -269,12 +278,13 @@ static Node *assign() {
 // equality = relational ('==' relational | '!=' relational)*
 static Node *equality() {
   Node *node = relational();
+  Token *start = token;
 
   for(;;) {
     if (consume("=="))
-      node = new_node_binary(ND_EQ, node, relational());
+      node = new_node_binary(ND_EQ, node, relational(), start);
     else if (consume("!="))
-      node = new_node_binary(ND_NE, node, relational());
+      node = new_node_binary(ND_NE, node, relational(), start);
     else
       return node;
   }
@@ -283,16 +293,17 @@ static Node *equality() {
 // relational = add ("<" add | "<=" add | ">" add | ">=" add)*
 static Node *relational() {
   Node *node = add();
+  Token *start = token;
 
   for(;;) {
     if (consume("<"))
-      node = new_node_binary(ND_LT, node, add());
+      node = new_node_binary(ND_LT, node, add(), start);
     else if (consume("<="))
-      node = new_node_binary(ND_LE, node, add());
+      node = new_node_binary(ND_LE, node, add(), start);
     else if (consume(">"))
-      node = new_node_binary(ND_LT, add(), node);
+      node = new_node_binary(ND_LT, add(), node, start);
     else if (consume(">="))
-      node = new_node_binary(ND_LE, add(), node);
+      node = new_node_binary(ND_LE, add(), node, start);
     else
       return node;
   }
@@ -301,12 +312,13 @@ static Node *relational() {
 // add = mul ("+" mul | "-" mul)*
 static Node *add() {
   Node *node = mul();
+  Token *start = token;
 
   for(;;) {
     if (consume("+"))
-      node = new_node_binary(ND_ADD, node, mul());
+      node = new_node_binary(ND_ADD, node, mul(), start);
     else if (consume("-"))
-      node = new_node_binary(ND_SUB, node, mul());
+      node = new_node_binary(ND_SUB, node, mul(), start);
     else
       return node;
   }
@@ -315,12 +327,13 @@ static Node *add() {
 // mul = unary ("*" unary | "/" unary)*
 static Node *mul() {
   Node *node = unary();
+  Token *start = token;
 
   for(;;) {
     if (consume("*"))
-      node = new_node_binary(ND_MUL, node, unary());
+      node = new_node_binary(ND_MUL, node, unary(), start);
     else if (consume("/"))
-      node = new_node_binary(ND_DIV, node, unary());
+      node = new_node_binary(ND_DIV, node, unary(), start);
     else
       return node;
   }
@@ -328,20 +341,22 @@ static Node *mul() {
 
 // unary = ("+" | "-" | "*" | "&")? unary | primary
 static Node *unary() {
+  Token *start = token;
 
   if (consume("+"))
     return unary();
   if (consume("-"))
-    return new_node_binary(ND_SUB, new_node_num(0), unary());
+    return new_node_binary(ND_SUB, new_node_num(0, start), unary(), start);
   if (consume("&"))
-    return new_node_unary(ND_ADDR, unary());
+    return new_node_unary(ND_ADDR, unary(), start);
   if (consume("*"))
-    return new_node_unary(ND_DEREF, unary());
+    return new_node_unary(ND_DEREF, unary(), start);
   return primary();
 }
 
 // primary = "(" expr ")" | func_or_var | num
 static Node *primary() {
+  Token *start = token;
 
   if (consume("(")) {
     Node *node = expr();
@@ -353,15 +368,16 @@ static Node *primary() {
     return func_or_var();
   }
 
-  return new_node_num(expect_number());
+  return new_node_num(expect_number(), start);
 }
 
 // func_or_var = func(arg_list) | var
 static Node *func_or_var() {
+  Token *start = token;
   char *name = expect_ident();
 
   if (consume("(")) {
-    Node *node = new_node(ND_FUNCALL);
+    Node *node = new_node(ND_FUNCALL, start);
     node->funcname = name;
     node->args = arg_list();
     expect(")");
@@ -374,7 +390,7 @@ static Node *func_or_var() {
     var->next = locals;
     locals = var;
   }
-  return new_node_var(var);
+  return new_node_var(var, start);
 }
 
 // arg_list = (expr (, expr)*)?

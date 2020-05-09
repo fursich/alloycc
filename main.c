@@ -9,7 +9,7 @@ static int align_to(int n, int base) {
 
 int main(int argc, char **argv) {
   if (argc != 2) {
-    error("引数の個数が正しくありません: %s\n", argv[0]);
+    error("%s: invalid number of arguments", argv[0]);
     return 1;
   }
 

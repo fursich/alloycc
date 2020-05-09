@@ -15,10 +15,7 @@ void error(char *fmt, ...) {
   exit(1);
 }
 
-void error_at(char *loc, char *fmt, ...) {
-  va_list ap;
-  va_start(ap, fmt);
-
+static void verror_at(char *loc, char *fmt, va_list ap) {
   int pos = loc - user_input;
   fprintf(stderr, "%s\n", user_input);
   fprintf(stderr, "%*s", pos, "");
@@ -27,6 +24,20 @@ void error_at(char *loc, char *fmt, ...) {
   vfprintf(stderr, fmt, ap);
   fprintf(stderr, "\n");
   exit(1);
+}
+
+void error_at(char *loc, char *fmt, ...) {
+  va_list ap;
+  va_start(ap, fmt);
+
+  verror_at(loc, fmt, ap);
+}
+
+void error_tok(Token *tok, char *fmt, ...) {
+  va_list ap;
+  va_start(ap, fmt);
+
+  verror_at(tok->str, fmt, ap);
 }
 
 /* compare token name (str) without consuming it (no checks are done against its kind) */
@@ -46,13 +57,13 @@ bool consume(char *op) {
 /* assert token name (str) equals to *op and consumes that token (no checks against its kind) */
 void expect(char *op) {
   if (!equal(op))
-    error_at(token->str, "'%s'ではありません", op);
+    error_at(token->str, "expected '%s'", op);
   token = token->next;
 }
 
 char *expect_ident() {
   if (token->kind != TK_IDENT)
-    error_at(token->str, "変数ではありません");
+    error_at(token->str, "expected an identifier");
   char *name = strndup(token->str, token->len);
   token = token->next;
   return name;
@@ -60,7 +71,7 @@ char *expect_ident() {
 
 int expect_number() {
   if (token->kind != TK_NUM)
-    error_at(token->str, "数ではありません");
+    error_at(token->str, "expected a number");
   int val = token->val;
   token = token->next;
   return val;
@@ -173,7 +184,7 @@ Token *tokenize() {
       continue;
     }
 
-    error_at(p, "トークナイズできません");
+    error_at(p, "invalid token");
   }
 
   new_token(TK_EOF, cur, p, 0);

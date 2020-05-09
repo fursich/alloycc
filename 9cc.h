@@ -30,6 +30,7 @@ struct Token {
 
 void error(char *fmt, ...);
 void error_at(char *loc, char *fmt, ...);
+void error_tok(Token *tok, char *fmt, ...);
 bool equal(char *op);
 void skip(char *op);
 bool consume(char *op);
@@ -82,6 +83,7 @@ typedef struct Node Node;
 struct Node {
   NodeKind kind;
   Node *next;
+  Token *token;
 
   Node *lhs;
   Node *rhs;
