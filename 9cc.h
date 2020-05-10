@@ -8,6 +8,8 @@
 #include <string.h>
 #include <assert.h>
 
+typedef struct Type Type;
+
 //
 // tokenize.c
 //
@@ -76,6 +78,7 @@ typedef struct Var Var;
 struct Var {
   Var *next;
   char *name;
+  Type *ty;
   int offset;
 };
 
@@ -134,12 +137,14 @@ void codegen(Function *func);
 //
 typedef enum {
   TY_INT,
+  TY_PTR,
 } TypeKind;
 
-typedef struct Type Type;
 struct Type {
   TypeKind kind;
   Type *base;
+  char *identifier;
 };
 
 extern Type *ty_int;
+Type *pointer_to(Type *base);

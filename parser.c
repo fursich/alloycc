@@ -6,9 +6,10 @@
 
 Var *locals = NULL;
 
-static Function *new_function(char *name) {
+static Function *new_function(Type *ty) {
   Function *func = calloc(1, sizeof(Function));
-  func->name = name;
+  func->name = ty->identifier;
+  // TODO: consider return type: func->return_ty = ty;
   return func;
 }
 
@@ -25,9 +26,20 @@ static Node *new_node(NodeKind kind, Token *token) {
   return node;
 }
 
-static Var *new_var(char *name) {
+static Var *new_var(Type *ty) {
   Var *var = calloc(1, sizeof(Var));
-  var->name = name;
+  var->name = ty->identifier;
+  var->ty= ty;
+  return var;
+}
+
+// XXX: No scopes implemehted, so it will simply overwrite old definition
+// if duplicated definition occurs
+// (no checks using lookup_var()
+static Var *new_lvar(Type *ty) {
+  Var *var = new_var(ty);
+  var->next = locals;
+  locals = var;
   return var;
 }
 
@@ -65,6 +77,7 @@ static Node *new_node_num(int val, Token *token) {
 }
 
 static Type *typespec(void);
+static Type *declarator(Type *base);
 static Node *declaration(void);
 
 static Function *funcdef(void);
@@ -106,29 +119,34 @@ static Type *typespec() {
   return ty_int;
 }
 
+// declarator = "*"* ident
+static Type *declarator(Type *base) {
+  Type *ty = base;
+
+  while(consume("*"))
+    ty = pointer_to(ty);
+
+  ty->identifier = expect_ident();
+  return ty;
+}
+
 // declaration = typespec (declarator ( = expr)? ( "," declarator ( = expr)? )* )? ";"
 static Node *declaration() {
   Node head = {};
   Node *cur = &head;
   Token *start_decl = token;
 
-  Type *ty = typespec(); // TODO: store type info
+  Type *basety = typespec();
 
   while(!consume(";")) {
     if (cur != &head)
       expect(",");
 
     Token *start = token;
-    char *name = expect_ident();
+    Type *ty = declarator(basety);
+    Var *var = new_lvar(ty);
 
-    // No scopes implemehted, so it will simply overwrite old definition
-    // if duplicated definition occurs
-    // (no checks using lookup_var()
-    Var *var = new_var(name); // TODO: use type info * consider args as well
-    var->next = locals;
-    locals = var;
-    Node *node = new_node_var(var, start);
-
+    Node *node = new_node_var(var, token);
     if (consume("="))
       node = new_node_binary(ND_ASSIGN, node, assign(), start);
 
@@ -146,9 +164,9 @@ static Node *declaration() {
 static Function *funcdef() {
   locals = NULL;
 
-  Type *ty = typespec(); // TODO: store type info
-  char *name = expect_ident();
-  Function *func = new_function(name);
+  Type *basety = typespec();
+  Type *ty = declarator(basety);
+  Function *func = new_function(ty);
 
   expect("(");
   Var *var = func_params();
@@ -171,9 +189,11 @@ static Var *func_params() {
   while (!equal(")")) {
     if (cur != &head)
       expect(",");
-    Type *ty = typespec(); // TODO: store type info
-    char *name = expect_ident();
-    cur = cur->next = new_var(name);
+
+    Token *start = token;
+    Type *basety = typespec();
+    Type *ty = declarator(basety);
+    cur = cur->next = new_var(ty);
   }
 
   return head.next;

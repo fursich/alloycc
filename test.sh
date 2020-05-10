@@ -25,6 +25,10 @@ assert() {
   fi
 }
 
+assert 6  'int main() { int x = 3, *y = &x; return x + *y; }'
+assert 2  'int *main() { int x = 3, y = x - 2; return x - y; }'
+assert 28 'int main() { int x = 28, *y = &x, **z = &y; return **z; }'
+
 assert 5  'int main() { int x = 3, y = 2; return x + y; }'
 assert 2  'int main() { int x = 3, y = x - 2; return x - y; }'
 
