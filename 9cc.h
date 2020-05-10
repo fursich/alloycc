@@ -86,6 +86,7 @@ typedef struct Node Node;
 struct Node {
   NodeKind kind;
   Node *next;
+  Type *ty;      // type for the node (not evaluated for stmt, expr only)
   Token *token;
 
   Node *lhs;
@@ -148,3 +149,6 @@ struct Type {
 
 extern Type *ty_int;
 Type *pointer_to(Type *base);
+bool is_integer(Type *ty);
+bool is_pointer(Type *ty);
+void generate_type(Node *node);

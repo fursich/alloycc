@@ -76,6 +76,58 @@ static Node *new_node_num(int val, Token *token) {
   return node;
 }
 
+static Node *new_node_add(Node *lhs, Node *rhs, Token *tok) {
+  generate_type(lhs);
+  generate_type(rhs);
+
+  // number + number
+  if (is_integer(lhs->ty) && is_integer(rhs->ty))
+    return new_node_binary(ND_ADD, lhs, rhs, tok);
+
+  // ptr + ptr (illegal)
+  if (is_pointer(lhs->ty) && is_pointer(rhs->ty))
+    error_tok(tok, "invalid operands");
+
+  // number + ptr (canonicalize)
+  if (is_integer(lhs->ty) && is_pointer(rhs->ty)) {
+    Node *t = lhs;
+    lhs = rhs;
+    rhs = t;
+  }
+
+  // ptr + number (multiplied by 8)
+  if (is_pointer(lhs->ty) && is_integer(rhs->ty)) {
+    rhs = new_node_binary(ND_MUL, rhs, new_node_num(8, tok), tok);
+    return new_node_binary(ND_ADD, lhs, rhs, tok);
+  }
+
+  error_tok(tok, "invalid operands");
+}
+
+static Node *new_node_sub(Node *lhs, Node *rhs, Token *tok) {
+  generate_type(lhs);
+  generate_type(rhs);
+
+  // number - number
+  if (is_integer(lhs->ty) && is_integer(rhs->ty))
+    return new_node_binary(ND_SUB, lhs, rhs, tok);
+
+  // ptr - number (multiplied by 8)
+  if (is_pointer(lhs->ty) && is_integer(rhs->ty)) {
+    rhs = new_node_binary(ND_MUL, rhs, new_node_num(8, tok), tok);
+    return new_node_binary(ND_SUB, lhs, rhs, tok);
+  }
+
+  // ptr - ptr: returns how many elements are between the two
+  if (is_pointer(lhs->ty) && is_pointer(rhs->ty)) {
+    Node *node = new_node_binary(ND_SUB, lhs, rhs, tok);
+    return new_node_binary(ND_DIV, node, new_node_num(8, tok), tok);
+  }
+
+  // number - ptr (illegal)
+  error_tok(tok, "invalid operands");
+}
+
 static Type *typespec(void);
 static Type *declarator(Type *base);
 static Node *declaration(void);
@@ -386,9 +438,9 @@ static Node *add() {
 
   for(;;) {
     if (consume("+"))
-      node = new_node_binary(ND_ADD, node, mul(), start);
+      node = new_node_add(node, mul(), start);
     else if (consume("-"))
-      node = new_node_binary(ND_SUB, node, mul(), start);
+      node = new_node_sub(node, mul(), start);
     else
       return node;
   }
