@@ -25,6 +25,14 @@ assert() {
   fi
 }
 
+assert 8  'int main() { int x; return sizeof(x); }'
+assert 8  'int main() { int x; return sizeof x; }'
+assert 8  'int main() { int *x; return sizeof(x); }'
+assert 8  'int main() { int x; return sizeof(&x); }'
+
+assert 8  'int main() { int x = 4; return sizeof(x = x - 2); }'
+assert 4  'int main() { int x = 4; sizeof(x = x - 2); return x; }'
+
 # TODO: cast return type for function call (no reference to its declaration so far)
 assert 9  'int **inc(int x) { return x + 1; } int main() { return inc(8); }'
 

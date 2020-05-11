@@ -22,7 +22,7 @@ int main(int argc, char **argv) {
     int offset = 0;
 
     for (Var *var = ctx->locals; var; var = var->next) {
-      offset += 8;
+      offset += var->ty->size;
       var->offset = offset;
     }
     ctx->stack_size = align_to(offset, 16);

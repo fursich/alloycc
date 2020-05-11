@@ -144,6 +144,7 @@ typedef enum {
 
 struct Type {
   TypeKind kind;
+  int size;       // used as sizeof() value
   Type *base;
   char *identifier;
 

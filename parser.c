@@ -95,9 +95,9 @@ static Node *new_node_add(Node *lhs, Node *rhs, Token *tok) {
     rhs = t;
   }
 
-  // ptr + number (multiplied by 8)
+  // ptr + number (multiplied by base size of ptr)
   if (is_pointer(lhs->ty) && is_integer(rhs->ty)) {
-    rhs = new_node_binary(ND_MUL, rhs, new_node_num(8, tok), tok);
+    rhs = new_node_binary(ND_MUL, rhs, new_node_num(lhs->ty->base->size, tok), tok);
     return new_node_binary(ND_ADD, lhs, rhs, tok);
   }
 
@@ -112,16 +112,16 @@ static Node *new_node_sub(Node *lhs, Node *rhs, Token *tok) {
   if (is_integer(lhs->ty) && is_integer(rhs->ty))
     return new_node_binary(ND_SUB, lhs, rhs, tok);
 
-  // ptr - number (multiplied by 8)
+  // ptr - number (multiplied by base size of ptr)
   if (is_pointer(lhs->ty) && is_integer(rhs->ty)) {
-    rhs = new_node_binary(ND_MUL, rhs, new_node_num(8, tok), tok);
+    rhs = new_node_binary(ND_MUL, rhs, new_node_num(lhs->ty->base->size, tok), tok);
     return new_node_binary(ND_SUB, lhs, rhs, tok);
   }
 
   // ptr - ptr: returns how many elements are between the two
   if (is_pointer(lhs->ty) && is_pointer(rhs->ty)) {
     Node *node = new_node_binary(ND_SUB, lhs, rhs, tok);
-    return new_node_binary(ND_DIV, node, new_node_num(8, tok), tok);
+    return new_node_binary(ND_DIV, node, new_node_num(lhs->ty->base->size, tok), tok);
   }
 
   // number - ptr (illegal)
@@ -491,7 +491,7 @@ static Node *unary() {
   return primary();
 }
 
-// primary = "(" expr ")" | func_or_var | num
+// primary = "(" expr ")" | "sizeof" unary | func_or_var | num
 static Node *primary() {
   Token *start = token;
 
@@ -503,6 +503,12 @@ static Node *primary() {
 
   if (token->kind == TK_IDENT) {
     return func_or_var();
+  }
+
+  if (consume("sizeof")) {
+    Node *node = unary();
+    generate_type(node);
+    return new_node_num(node->ty->size, start);
   }
 
   return new_node_num(expect_number(), start);
