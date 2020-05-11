@@ -151,6 +151,7 @@ static Node *relational(void);
 static Node *add(void);
 static Node *mul(void);
 static Node *unary(void);
+static Node *postfix(void);
 static Node *primary(void);
 static Node *func_or_var(void);
 static Node *arg_list(void);
@@ -489,7 +490,8 @@ static Node *mul() {
   }
 }
 
-// unary = ("+" | "-" | "*" | "&")? unary | primary
+// unary = ("+" | "-" | "*" | "&")? unary
+//       | postfix
 static Node *unary() {
   Token *start = token;
 
@@ -501,7 +503,22 @@ static Node *unary() {
     return new_node_unary(ND_ADDR, unary(), start);
   if (consume("*"))
     return new_node_unary(ND_DEREF, unary(), start);
-  return primary();
+  return postfix();
+}
+
+// postfix = primary ("[" expr "]")*
+static Node *postfix() {
+  Node *node = primary();
+
+  while (consume("["))  {
+    // x[y] is syntax sugar for *(x + y)
+    Token *start = token;
+    Node *idx = expr();
+    expect("]");
+    node = new_node_unary(ND_DEREF, new_node_add(node, idx, start), start);
+  }
+
+  return node;
 }
 
 // primary = "(" expr ")" | "sizeof" unary | func_or_var | num
