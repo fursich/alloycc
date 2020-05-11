@@ -139,16 +139,24 @@ void codegen(Function *func);
 typedef enum {
   TY_INT,
   TY_PTR,
+  TY_FUNC,
 } TypeKind;
 
 struct Type {
   TypeKind kind;
   Type *base;
   char *identifier;
+
+  // function
+  Type *return_ty;
+  Type *params;
+  Type *next;
 };
 
 extern Type *ty_int;
 Type *pointer_to(Type *base);
+Type *copy_ty(Type *ty);
+Type *func_returning(Type *ty);
 bool is_integer(Type *ty);
 bool is_pointer(Type *ty);
 void generate_type(Node *node);

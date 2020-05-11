@@ -9,6 +9,19 @@ Type *pointer_to(Type *base) {
   return ty;
 }
 
+Type *copy_ty(Type *org) {
+  Type *ty = calloc(1, sizeof(Type));
+  *ty = *org;
+  return ty;
+}
+
+Type *func_returning(Type *return_ty) {
+  Type *ty = calloc(1, sizeof(Type));
+  ty->kind = TY_FUNC;
+  ty->return_ty = return_ty;
+  return ty;
+}
+
 bool is_integer(Type *ty) {
   return ty->kind == TY_INT;
 }

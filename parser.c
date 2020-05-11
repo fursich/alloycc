@@ -133,7 +133,7 @@ static Type *declarator(Type *base);
 static Node *declaration(void);
 
 static Function *funcdef(void);
-static Var *func_params(void);
+static Type *func_params(void);
 
 static Node *block_stmt(void);
 static Node *stmt(void);
@@ -166,19 +166,33 @@ Function *parse() {
   return head.next;
 }
 
+// typespec = "int"
 static Type *typespec() {
   expect("int");
   return ty_int;
 }
 
-// declarator = "*"* ident
-static Type *declarator(Type *base) {
-  Type *ty = base;
+// type-suffix = ("(" func-params ")")?
+static Type *type_suffix(Type *ty) {
+  if (consume("(")) {
+    ty = func_returning(ty);
+    ty->params = func_params();
+    expect(")");
+  }
 
-  while(consume("*"))
+  return ty;
+}
+
+// declarator = "*"* ident type-suffix
+// TODO: to consider "(" declarator ")" | type-suffix+
+static Type *declarator(Type *ty) {
+  while (consume("*"))
     ty = pointer_to(ty);
 
-  ty->identifier = expect_ident();
+  char *name = expect_ident();
+  ty = type_suffix(ty);
+
+  ty->identifier = name;
   return ty;
 }
 
@@ -211,20 +225,21 @@ static Node *declaration() {
   return blk;
 }
 
-// funcdef = typedef ident(var_list) { block_stmt }
+// funcdef = typespec declarator { block_stmt }
 // TODO: consider poiter-type
 static Function *funcdef() {
   locals = NULL;
 
   Type *basety = typespec();
   Type *ty = declarator(basety);
+
   Function *func = new_function(ty);
 
-  expect("(");
-  Var *var = func_params();
-  func->params = var;
-  locals = var;
-  expect(")");
+  for (Type *t = ty->params; t; t = t->next) {
+    Var *var = new_lvar(t); // TODO: check if this registratoin order make sense (first defined comes first, latter could overshadow the earlier)
+  }
+
+  func->params = locals;
 
   func->node = block_stmt();
   func->context = new_context(locals);
@@ -234,9 +249,9 @@ static Function *funcdef() {
 
 // func-params = param, ("," param)*
 // param = typespec declarator
-static Var *func_params() {
-  Var head = {0};
-  Var *cur = &head;
+static Type *func_params() {
+  Type head = {0};
+  Type *cur = &head;
 
   while (!equal(")")) {
     if (cur != &head)
@@ -245,7 +260,7 @@ static Var *func_params() {
     Token *start = token;
     Type *basety = typespec();
     Type *ty = declarator(basety);
-    cur = cur->next = new_var(ty);
+    cur = cur->next = copy_ty(ty);
   }
 
   return head.next;

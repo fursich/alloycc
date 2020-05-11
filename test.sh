@@ -25,6 +25,9 @@ assert() {
   fi
 }
 
+# TODO: cast return type for function call (no reference to its declaration so far)
+assert 9  'int **inc(int x) { return x + 1; } int main() { return inc(8); }'
+
 assert 3  'int main() { int x = 7, y = 5; *(&x + 1) = 3; return y; }'
 assert 3  'int main() { int x = 7, y = 5; *(1 + &x) = 3; return y; }'
 assert 2  'int main() { int x, y, z; return &z - &x; }'
@@ -48,6 +51,7 @@ assert 4  'int main() { int x = 7, y = 5; *(&y - 1) = 4; return x; }'
 assert 5  'int main() { int x = 7, y = 5; *(&y - 1) = 4; return y; }'
 
 assert 9  'int inc(int x) { return x + 1; } int main() { return inc(8); }'
+assert 4  'int sub2(int x, int y) { return x - y; } int main() { return sub2(6, 2); }'
 assert 7  'int adder(int p, int q, int r, int x, int y, int z) { return p + q + r + x + y + z; } int main() { return adder(2, -5, 3, 3, -4, 8); }'
 assert 89 '
   int fibo(int n) {

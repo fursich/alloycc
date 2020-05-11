@@ -61,8 +61,11 @@ static void load_args(Node *args) {
 static void store_args(Var *params) {
   int i = 0;
 
+  for (Var *arg = params; arg; arg = arg->next)
+    i++;
+
   for (Var *arg = params; arg; arg = arg->next) {
-    printf("  mov [rbp-%d], %s\n", arg->offset, argreg[i++]);
+    printf("  mov [rbp-%d], %s\n", arg->offset, argreg[--i]);
   }
 }
 
