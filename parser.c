@@ -173,7 +173,7 @@ static Type *typespec() {
 }
 
 // type-suffix = "(" func-params ")"
-//             | "[" num "]"
+//             | "[" num "]" type-suffix
 //             | ε
 static Type *type_suffix(Type *ty) {
   if (consume("(")) {
@@ -183,8 +183,10 @@ static Type *type_suffix(Type *ty) {
     return ty;
   }
   if (consume("[")) {
-    ty = array_of(ty, expect_number());
+    int sz = expect_number();
     expect("]");
+    ty = type_suffix(ty);  // first, define rightmost sub-array's size
+    ty = array_of(ty, sz); // this array composes of sz length of subarrays above
     return ty;
   }
 
