@@ -23,12 +23,22 @@ Type *func_returning(Type *return_ty) {
   return ty;
 }
 
+Type *array_of(Type *base, int len) {
+  Type *ty = calloc(1, sizeof(Type));
+  ty->kind = TY_ARRAY;
+  ty->base = base;
+  ty->size = base->size * len;
+  ty->array_len = len;
+  return ty;
+}
+
 bool is_integer(Type *ty) {
   return ty->kind == TY_INT;
 }
 
-bool is_pointer(Type *ty) {
-  return ty->kind == TY_PTR;
+// types having its base type that 'behaves like' a pointer
+bool is_pointer_like(Type *ty) {
+  return ty->base;
 }
 
 static void set_type_for_expr(Node *node) {
@@ -56,11 +66,17 @@ static void set_type_for_expr(Node *node) {
       node->ty = node->var->ty;
       return;
     case ND_ADDR:
-      node->ty = pointer_to(node->lhs->ty);
+      if (node->lhs->ty->kind == TY_ARRAY)
+        // adddress of an element of array should be pointer to the element type
+        //e.g. for char arr[2],  char *p = &arr[1] (p is a pointer to char, the element type)
+        node->ty = pointer_to(node->lhs->ty->base);
+      else
+        // otherwise, address type should be a pointer to the give type
+        node->ty = pointer_to(node->lhs->ty);
       return;
     case ND_DEREF: {
       Type *ty = node->lhs->ty;
-      if (is_pointer(ty))
+      if (is_pointer_like(ty))
         node->ty = ty->base;
       else
         node->ty = ty_int;

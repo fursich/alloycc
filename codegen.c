@@ -7,7 +7,7 @@
 static void gen_expr(Node *node);
 static void gen_stmt(Node *node);
 static void gen_addr(Node *node);
-static void load(void);
+static void load(Type *ty);
 static void store(void);
 
 static int labelseq = 1;
@@ -28,7 +28,15 @@ static void gen_addr(Node *node) {
   error_tok(node->token, "not an lvalue");
 }
 
-static void load() {
+static void load(Type *ty) {
+  if (ty->kind == TY_ARRAY) {
+    // NOOP for array type node
+    // an entire array cannot be "loaded". Instead the variable
+    // is interperted as the address of the first element
+    // (therefore, unlike any other variables, this does not refer to its stored value)
+    return;
+  }
+
   printf("  pop rax\n");
   printf("  mov rax, [rax]\n");
   printf("  push rax\n");
@@ -72,6 +80,9 @@ static void store_args(Var *params) {
 static void gen_expr(Node *node) {
   switch (node->kind) {
   case ND_ASSIGN:
+    if (node->ty->kind == TY_ARRAY)
+      error_tok(node->token, "not an lvalue");
+
     gen_addr(node->lhs);
     gen_expr(node->rhs);
 
@@ -91,14 +102,14 @@ static void gen_expr(Node *node) {
   case ND_VAR:
     gen_addr(node);
 
-    load();
+    load(node->ty);
     return;
   case ND_ADDR:
     gen_addr(node->lhs);
     return;
   case ND_DEREF:
     gen_expr(node->lhs);
-    load();
+    load(node->ty);
     return;
   }
 

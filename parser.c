@@ -85,18 +85,18 @@ static Node *new_node_add(Node *lhs, Node *rhs, Token *tok) {
     return new_node_binary(ND_ADD, lhs, rhs, tok);
 
   // ptr + ptr (illegal)
-  if (is_pointer(lhs->ty) && is_pointer(rhs->ty))
+  if (is_pointer_like(lhs->ty) && is_pointer_like(rhs->ty))
     error_tok(tok, "invalid operands");
 
   // number + ptr (canonicalize)
-  if (is_integer(lhs->ty) && is_pointer(rhs->ty)) {
+  if (is_integer(lhs->ty) && is_pointer_like(rhs->ty)) {
     Node *t = lhs;
     lhs = rhs;
     rhs = t;
   }
 
   // ptr + number (multiplied by base size of ptr)
-  if (is_pointer(lhs->ty) && is_integer(rhs->ty)) {
+  if (is_pointer_like(lhs->ty) && is_integer(rhs->ty)) {
     rhs = new_node_binary(ND_MUL, rhs, new_node_num(lhs->ty->base->size, tok), tok);
     return new_node_binary(ND_ADD, lhs, rhs, tok);
   }
@@ -113,13 +113,13 @@ static Node *new_node_sub(Node *lhs, Node *rhs, Token *tok) {
     return new_node_binary(ND_SUB, lhs, rhs, tok);
 
   // ptr - number (multiplied by base size of ptr)
-  if (is_pointer(lhs->ty) && is_integer(rhs->ty)) {
+  if (is_pointer_like(lhs->ty) && is_integer(rhs->ty)) {
     rhs = new_node_binary(ND_MUL, rhs, new_node_num(lhs->ty->base->size, tok), tok);
     return new_node_binary(ND_SUB, lhs, rhs, tok);
   }
 
   // ptr - ptr: returns how many elements are between the two
-  if (is_pointer(lhs->ty) && is_pointer(rhs->ty)) {
+  if (is_pointer_like(lhs->ty) && is_pointer_like(rhs->ty)) {
     Node *node = new_node_binary(ND_SUB, lhs, rhs, tok);
     return new_node_binary(ND_DIV, node, new_node_num(lhs->ty->base->size, tok), tok);
   }
@@ -172,12 +172,20 @@ static Type *typespec() {
   return ty_int;
 }
 
-// type-suffix = ("(" func-params ")")?
+// type-suffix = "(" func-params ")"
+//             | "[" num "]"
+//             | ε
 static Type *type_suffix(Type *ty) {
   if (consume("(")) {
     ty = func_returning(ty);
     ty->params = func_params();
     expect(")");
+    return ty;
+  }
+  if (consume("[")) {
+    ty = array_of(ty, expect_number());
+    expect("]");
+    return ty;
   }
 
   return ty;
@@ -274,11 +282,14 @@ static Node *block_stmt() {
   Token *start = token;
 
   expect("{");
-  while (!consume("}"))
+  while (!consume("}")) {
     if (equal("int"))
       cur = cur->next = declaration();
     else
       cur = cur->next = stmt();
+
+    generate_type(cur);
+  }
 
   Node *node = new_node(ND_BLOCK, start);
   node->body = head.next;
