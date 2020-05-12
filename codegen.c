@@ -11,14 +11,19 @@ static void load(Type *ty);
 static void store(void);
 
 static int labelseq = 1;
-static char *funcname;
+static Function  *current_fn;
 
 static void gen_addr(Node *node) {
   switch (node->kind) {
     case ND_VAR:
-      printf("  mov rax, rbp\n");
-      printf("  sub rax, %d\n", node->var->offset);
-      printf("  push rax\n");
+      if (node->var->is_local) {
+        printf("  mov rax, rbp\n");
+        printf("  sub rax, %d\n", node->var->offset);
+        printf("  push rax\n");
+      } else {
+        printf("  mov rax, offset %s\n", node->var->name);
+        printf("  push rax\n");
+      }
       return;
     case ND_DEREF: // *(foo + 8) = 123; (DEREF as lvalue)
       gen_expr(node->lhs);
@@ -207,7 +212,7 @@ static void gen_stmt(Node *node) {
   case ND_RETURN:
     gen_expr(node->lhs);
     printf("  pop rax\n");
-    printf("  jmp .L.return.%s\n", funcname);
+    printf("  jmp .L.return.%s\n", current_fn->name);
     return;
   case ND_BLOCK: {
     Node *stmt = node->body;
@@ -226,16 +231,25 @@ static void gen_stmt(Node *node) {
   }
 }
 
-void codegen(Function *func) {
-  printf(".intel_syntax noprefix\n");
-  printf(".global main\n");
+static void emit_data(Program *prog) {
+  printf(".data\n");
 
-  for(Function *fn = func; fn; fn = fn->next) {
+  for (Var *var = prog->globals; var; var = var->next) {
+    printf("%s:\n", var->name);
+    printf("  .zero %d\n", var->ty->size);
+  }
+}
+
+static void emit_text(Program *prog) {
+  printf(".text\n");
+
+  for(Function *fn = prog->fns; fn; fn = fn->next) {
     ScopedContext *ctx = fn->context;
-    funcname = fn->name;
+    current_fn = fn;
 
     // label of the function
-    printf("%s:\n", funcname);
+    printf(".globl %s\n", fn->name);
+    printf("%s:\n", fn->name);
 
     // prologue
     printf("  push rbp\n");
@@ -248,10 +262,16 @@ void codegen(Function *func) {
       gen_stmt(n);
 
     // epilogue
-    printf(".L.return.%s:\n", funcname);
+    printf(".L.return.%s:\n", fn->name);
     printf("  mov rsp, rbp\n");
     printf("  pop rbp\n");
 
     printf("  ret\n");
   }
+}
+
+void codegen(Program *prog) {
+  printf(".intel_syntax noprefix\n");
+  emit_data(prog);
+  emit_text(prog);
 }

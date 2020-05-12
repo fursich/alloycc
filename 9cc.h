@@ -80,6 +80,7 @@ struct Var {
   char *name;
   Type *ty;
   int offset;
+  bool is_local;
 };
 
 typedef struct Node Node;
@@ -125,13 +126,19 @@ struct Function {
   ScopedContext *context;
 };
 
-Function *parse(void);
+typedef struct Program Program;
+struct Program {
+  Function *fns;
+  Var *globals;
+};
+
+Program *parse(void);
 
 //
 // codegen.c
 //
 
-void codegen(Function *func);
+void codegen(Program *prog);
 
 //
 // type.c

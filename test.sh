@@ -4,15 +4,15 @@ assert() {
   expected="$1"
   input="$2"
 
-  ./debug/9cc "$input" > debug/tmp.s
-  cat <<-FUNC | cc -c -xc -o debug/tmp2.o -
+  ./debug/9cc "$input" > debug/tmp.s || exit
+  cat <<-FUNC | gcc -c -xc -fno-common -o debug/tmp2.o -
     int ret1()  { return 1; }
     int ret42() { return 42; }
     int echo_self(int a) { return a; }
     int sum3(int a, int b, int c) { return a + b + c; }
 	FUNC
 
-  cc -o debug/tmp debug/tmp.s debug/tmp2.o
+  gcc -static -o debug/tmp debug/tmp.s debug/tmp2.o
 
   ./debug/tmp
   actual="$?"
@@ -24,6 +24,18 @@ assert() {
     exit 1
   fi
 }
+
+assert 0 'int x; int main() { return x; }'
+assert 3 'int x; int main() { x=3; return x; }'
+assert 7 'int x; int y; int main() { x=3; y=4; return x+y; }'
+assert 7 'int x, y; int main() { x=3; y=4; return x+y; }'
+assert 0 'int x[4]; int main() { x[0]=0; x[1]=1; x[2]=2; x[3]=3; return x[0]; }'
+assert 1 'int x[4]; int main() { x[0]=0; x[1]=1; x[2]=2; x[3]=3; return x[1]; }'
+assert 2 'int x[4]; int main() { x[0]=0; x[1]=1; x[2]=2; x[3]=3; return x[2]; }'
+assert 3 'int x[4]; int main() { x[0]=0; x[1]=1; x[2]=2; x[3]=3; return x[3]; }'
+
+assert 8 'int x; int main() { return sizeof(x); }'
+assert 32 'int x[4]; int main() { return sizeof(x); }'
 
 assert 3 'int main() { int x[3]; *x=3; x[1]=4; x[2]=5; return *x; }'
 assert 4 'int main() { int x[3]; *x=3; x[1]=4; x[2]=5; return *(x+1); }'

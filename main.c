@@ -15,9 +15,9 @@ int main(int argc, char **argv) {
 
   user_input = argv[1];
   token = tokenize();
-  Function *func = parse();
+  Program *prog = parse();
 
-  for (Function *fn = func; fn; fn = fn->next) {
+  for (Function *fn = prog->fns; fn; fn = fn->next) {
     ScopedContext *ctx = fn->context;
     int offset = 0;
 
@@ -28,6 +28,6 @@ int main(int argc, char **argv) {
     ctx->stack_size = align_to(offset, 16);
   }
 
-  codegen(func);
+  codegen(prog);
   return 0;
 }

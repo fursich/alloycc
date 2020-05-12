@@ -4,7 +4,13 @@
 // Parser
 //
 
-Var *locals = NULL;
+Var *locals;
+Var *globals;
+
+static Program *new_program() {
+  Program *prog = calloc(1, sizeof(Program));
+  return prog;
+}
 
 static Function *new_function(Type *ty) {
   Function *func = calloc(1, sizeof(Function));
@@ -38,10 +44,20 @@ static Var *new_var(Type *ty) {
 // (no checks using lookup_var()
 static Var *new_lvar(Type *ty) {
   Var *var = new_var(ty);
+  var->is_local = true;
   var->next = locals;
   locals = var;
   return var;
 }
+
+static Var *new_gvar(Type *ty) {
+  Var *var = new_var(ty);
+  var->is_local = false;
+  var->next = globals;
+  globals = var;
+  return var;
+}
+
 
 static Node *new_node_unary(NodeKind kind, Node *lhs, Token *token) {
   Node *node = new_node(kind, token);
@@ -64,6 +80,11 @@ static Node *new_node_var(Var *var, Token *token) {
 
 static Var *lookup_var(char *name) {
   for (Var *var = locals; var; var = var->next) {
+    if (!strcmp(var->name, name))
+      return var;
+  }
+
+  for (Var *var = globals; var; var = var->next) {
     if (!strcmp(var->name, name))
       return var;
   }
@@ -132,7 +153,7 @@ static Type *typespec(void);
 static Type *declarator(Type *base);
 static Node *declaration(void);
 
-static Function *funcdef(void);
+static Function *funcdef(Type *ty);
 static Type *func_params(void);
 
 static Node *block_stmt(void);
@@ -156,15 +177,37 @@ static Node *primary(void);
 static Node *func_or_var(void);
 static Node *arg_list(void);
 
-// program = funcdef*
-Function *parse() {
+// program = (funcdef | global-var)*
+Program *parse() {
   Function head = {0};
   Function *cur = &head;
+  globals = NULL;
 
-  while (!at_eof())
-    cur = cur->next = funcdef();
+  while (!at_eof()) {
+    Type *basety = typespec();
+    Type *ty = declarator(basety);
 
-  return head.next;
+    // function
+    if (ty->kind == TY_FUNC) {
+      cur = cur->next = funcdef(ty);
+      continue;
+    }
+
+    // global variable = typespec declarator ("," declarator)* ";"
+    for (;;) {
+      new_gvar(ty);
+      if (consume(";"))
+        break;
+      expect(",");
+      ty = declarator(basety);
+    }
+  }
+
+  Program *prog = new_program();
+  prog->globals = globals;
+  prog->fns = head.next;
+
+  return prog;
 }
 
 // typespec = "int"
@@ -236,13 +279,10 @@ static Node *declaration() {
   return blk;
 }
 
-// funcdef = typespec declarator { block_stmt }
+// funcdef = { block_stmt }
 // TODO: consider poiter-type
-static Function *funcdef() {
+static Function *funcdef(Type *ty) {
   locals = NULL;
-
-  Type *basety = typespec();
-  Type *ty = declarator(basety);
 
   Function *func = new_function(ty);
 
