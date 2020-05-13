@@ -25,6 +25,15 @@ assert() {
   fi
 }
 
+assert 1 'int main() { char x=1; return x; }'
+assert 1 'int main() { char x=1; char y=2; return x; }'
+assert 2 'int main() { char x=1; char y=2; return y; }'
+
+assert 1 'int main() { char x; return sizeof(x); }'
+assert 10 'int main() { char x[10]; return sizeof(x); }'
+assert 1 'int main() { return sub_char(7, 3, 3); } int sub_char(char a, char b, char c) { return a-b-c; }'
+assert 3 'int main() { char x[3]; x[0]=-1; x[1]=2; int y=4; return x[0]+y; }'
+
 assert 0 'int x; int main() { return x; }'
 assert 3 'int x; int main() { x=3; return x; }'
 assert 7 'int x; int y; int main() { x=3; y=4; return x+y; }'

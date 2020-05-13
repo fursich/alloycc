@@ -8,9 +8,11 @@ static void gen_expr(Node *node);
 static void gen_stmt(Node *node);
 static void gen_addr(Node *node);
 static void load(Type *ty);
-static void store(void);
+static void store(Type *ty);
 
 static int labelseq = 1;
+static const char *argreg8[]  = { "dil", "sil", "dl", "cl", "r8b", "r9b" };
+static const char *argreg64[] = { "rdi", "rsi", "rdx", "rcx", "r8", "r9" };
 static Function  *current_fn;
 
 static void gen_addr(Node *node) {
@@ -43,20 +45,26 @@ static void load(Type *ty) {
   }
 
   printf("  pop rax\n");
-  printf("  mov rax, [rax]\n");
+
+  if (ty->size == 1)
+    printf("  movsx rax, byte ptr [rax]\n");
+  else
+    printf("  mov rax, [rax]\n");
+
   printf("  push rax\n");
 }
 
-static void store() {
+static void store(Type *ty) {
   printf("  pop rdi\n");
   printf("  pop rax\n");
-  printf("  mov [rax], rdi\n");
+
+  if (ty->size == 1)
+    printf("  mov [rax], dil\n");
+  else
+    printf("  mov [rax], rdi\n");
+
   printf("  push rdi\n");
 }
-
-static const char *argreg[] = {
-  "rdi", "rsi", "rdx", "rcx", "r8", "r9"
-};
 
 static void load_args(Node *args) {
   int argc = 0;
@@ -67,7 +75,7 @@ static void load_args(Node *args) {
   }
 
   for(int i = 0; i < argc; i++) {
-    printf("  pop %s\n", argreg[argc - 1 - i]);
+    printf("  pop %s\n", argreg64[argc - 1 - i]);
   }
 }
 
@@ -78,7 +86,10 @@ static void store_args(Var *params) {
     i++;
 
   for (Var *arg = params; arg; arg = arg->next) {
-    printf("  mov [rbp-%d], %s\n", arg->offset, argreg[--i]);
+    if (arg->ty->size == 1)
+      printf("  mov [rbp-%d], %s\n", arg->offset, argreg8[--i]);
+    else
+      printf("  mov [rbp-%d], %s\n", arg->offset, argreg64[--i]);
   }
 }
 
@@ -91,7 +102,7 @@ static void gen_expr(Node *node) {
     gen_addr(node->lhs);
     gen_expr(node->rhs);
 
-    store();
+    store(node->ty);
     return;
   case ND_NUM:
     printf("  push %d\n", node->val);

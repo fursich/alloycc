@@ -210,8 +210,11 @@ Program *parse() {
   return prog;
 }
 
-// typespec = "int"
+// typespec = "int" | "char"
 static Type *typespec() {
+  if (consume("char"))
+    return ty_char;
+
   expect("int");
   return ty_int;
 }
@@ -279,6 +282,11 @@ static Node *declaration() {
   return blk;
 }
 
+// whether given token reprents a type
+static bool is_typename() {
+  return equal("char") || equal("int");
+}
+
 // funcdef = { block_stmt }
 // TODO: consider poiter-type
 static Function *funcdef(Type *ty) {
@@ -326,7 +334,7 @@ static Node *block_stmt() {
 
   expect("{");
   while (!consume("}")) {
-    if (equal("int"))
+    if (is_typename())
       cur = cur->next = declaration();
     else
       cur = cur->next = stmt();

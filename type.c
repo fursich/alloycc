@@ -1,18 +1,26 @@
 #include "9cc.h"
 
+Type *ty_char = &(Type) {TY_CHAR, 1};
 Type *ty_int = &(Type) {TY_INT, 8};
 
-Type *pointer_to(Type *base) {
+Type *new_type(TypeKind kind, int size) {
   Type *ty = calloc(1, sizeof(Type));
-  ty->kind = TY_PTR;
-  ty->size = 8;
-  ty->base = base;
+  ty->kind = kind;
+  ty->size = size;
   return ty;
 }
 
 Type *copy_ty(Type *org) {
   Type *ty = calloc(1, sizeof(Type));
   *ty = *org;
+  return ty;
+}
+
+Type *pointer_to(Type *base) {
+  Type *ty = calloc(1, sizeof(Type));
+  ty->kind = TY_PTR;
+  ty->size = 8;
+  ty->base = base;
   return ty;
 }
 
@@ -33,7 +41,7 @@ Type *array_of(Type *base, int len) {
 }
 
 bool is_integer(Type *ty) {
-  return ty->kind == TY_INT;
+  return ty->kind == TY_CHAR || ty->kind == TY_INT;
 }
 
 // types having its base type that 'behaves like' a pointer

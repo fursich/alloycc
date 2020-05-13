@@ -144,6 +144,7 @@ void codegen(Program *prog);
 // type.c
 //
 typedef enum {
+  TY_CHAR,
   TY_INT,
   TY_PTR,
   TY_FUNC,
@@ -165,6 +166,7 @@ struct Type {
   int array_len;
 };
 
+extern Type *ty_char;
 extern Type *ty_int;
 Type *pointer_to(Type *base);
 Type *copy_ty(Type *ty);

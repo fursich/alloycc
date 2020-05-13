@@ -111,6 +111,7 @@ static const char *starts_with_reserved(char *p) {
     "for",
     "return",
     "int",
+    "char",
     "sizeof",
   };
 
