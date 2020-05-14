@@ -17,6 +17,7 @@ typedef struct Type Type;
 typedef enum {
   TK_RESERVED,
   TK_IDENT,
+  TK_STR,
   TK_NUM,
   TK_EOF,
 } TokenKind;
@@ -28,6 +29,9 @@ struct Token {
   int val;
   char *str;
   int len;
+
+  char *contents; // string literal contents, including '\0' terminator
+  int cont_len; // string literal length
 };
 
 void error(char *fmt, ...);
@@ -38,6 +42,7 @@ void skip(char *op);
 bool consume(char *op);
 void expect(char *op);
 char *expect_ident(void);
+char *expect_string(void);
 int expect_number(void);
 bool at_eof(void);
 Token *tokenize(void);
@@ -79,8 +84,13 @@ struct Var {
   Var *next;
   char *name;
   Type *ty;
-  int offset;
   bool is_local;
+
+  // for local variables
+  int offset;
+
+  // for global variables
+  char *init_data;
 };
 
 typedef struct Node Node;

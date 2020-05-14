@@ -69,6 +69,14 @@ char *expect_ident() {
   return name;
 }
 
+char *expect_string() {
+  if (token->kind != TK_STR)
+    error_at(token->str, "expected a string");
+  char *s = token->str;
+  token = token->next;
+  return s;
+}
+
 int expect_number() {
   if (token->kind != TK_NUM)
     error_at(token->str, "expected a number");
@@ -141,6 +149,20 @@ static const char *starts_with_reserved(char *p) {
   return NULL;
 }
 
+static Token *read_string_literal(Token *cur, char *start) {
+  char *p = start + 1;
+
+  while (*p && *p != '"')
+    p++;
+  if(!*p)
+    error_at(start, "unclosed string literal");
+
+  Token *tok = new_token(TK_STR, cur, start, p - start + 1);
+  tok->contents = strndup(start + 1, p - start - 1);
+  tok->cont_len = p - start;
+  return tok;
+}
+
 Token *tokenize() {
   char *p = user_input;
   Token head;
@@ -150,6 +172,22 @@ Token *tokenize() {
   while(*p) {
     if (isspace(*p)) {
       p++;
+      continue;
+    }
+
+    /* Integer Literal */
+    if (isdigit(*p)) {
+      cur = new_token(TK_NUM, cur, p, 0);
+      char *q = p;
+      cur->val = strtol(p, &p, 10);
+      cur->len = p - q;
+      continue;
+    }
+
+    /* String Literal */
+    if (*p == '"') {
+      cur = read_string_literal(cur, p);
+      p += cur->len;
       continue;
     }
 
@@ -175,15 +213,6 @@ Token *tokenize() {
     /* NOTE: when put ahead of identifier detection, this will mis-detect identifiers that start with '_' */
     if (ispunct(*p)) {
       cur = new_token(TK_RESERVED, cur, p++, 1);
-      continue;
-    }
-
-    /* Integer Literal */
-    if (isdigit(*p)) {
-      cur = new_token(TK_NUM, cur, p, 0);
-      char *q = p;
-      cur->val = strtol(p, &p, 10);
-      cur->len = p - q;
       continue;
     }
 

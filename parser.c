@@ -58,6 +58,21 @@ static Var *new_gvar(Type *ty) {
   return var;
 }
 
+static char *new_gvar_name() {
+  static int counter = 0;
+  char *buf = malloc(20);
+
+  sprintf(buf, ".L.data.%d", counter++);
+  return buf;
+}
+
+static Var *new_string_literal(char *s, int len) {
+  Type *ty = array_of(ty_char, len);
+  ty->identifier = new_gvar_name();
+  Var *var = new_gvar(ty);
+  var->init_data = s;
+  return var;
+}
 
 static Node *new_node_unary(NodeKind kind, Node *lhs, Token *token) {
   Node *node = new_node(kind, token);
@@ -569,7 +584,7 @@ static Node *postfix() {
   return node;
 }
 
-// primary = "(" expr ")" | "sizeof" unary | func_or_var | num
+// primary = "(" expr ")" | "sizeof" unary | func_or_var | str | num
 static Node *primary() {
   Token *start = token;
 
@@ -587,6 +602,12 @@ static Node *primary() {
     Node *node = unary();
     generate_type(node);
     return new_node_num(node->ty->size, start);
+  }
+
+  if (token->kind == TK_STR) {
+    Var *var = new_string_literal(token->contents, token->cont_len);
+    expect_string();
+    return new_node_var(var, start);
   }
 
   return new_node_num(expect_number(), start);
