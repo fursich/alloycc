@@ -149,7 +149,21 @@ static const char *starts_with_reserved(char *p) {
   return NULL;
 }
 
-static char read_escaped_char(char *p) {
+static char read_escaped_char(char **pos, char *p) {
+  if ('0' <= *p && *p <= '7') {
+    // Read an octal number.
+    int c = *p++ - '0';
+    if ('0' <= *p && *p <= '7') {
+      c = (c << 3) | (*p++ - '0');
+      if ('0' <= *p && *p <= '7')
+        c = (c << 3) | (*p++ - '0');
+    }
+
+    *pos = p;
+    return c;
+  }
+
+  *pos = p + 1;
   switch(*p) {
   case 'a': return '\a';
   case 'b': return '\b';
@@ -178,12 +192,10 @@ static Token *read_string_literal(Token *cur, char *start) {
   int len = 0;
 
   while (*p != '"') {
-    if (*p == '\\') {
-      buf[len++] = read_escaped_char(p + 1);
-      p += 2;
-    } else {
+    if (*p == '\\')
+      buf[len++] = read_escaped_char(&p, p + 1);
+    else
       buf[len++] = *p++;
-    }
   }
 
   buf[len++] = '\0';
