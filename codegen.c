@@ -269,7 +269,6 @@ static void emit_text(Program *prog) {
   printf(".text\n");
 
   for(Function *fn = prog->fns; fn; fn = fn->next) {
-    ScopedContext *ctx = fn->context;
     current_fn = fn;
 
     // label of the function
@@ -279,7 +278,7 @@ static void emit_text(Program *prog) {
     // prologue
     printf("  push rbp\n");
     printf("  mov rbp, rsp\n");
-    printf("  sub rsp, %d\n", ctx->stack_size); // TODO: reserve registers (R12-R15) as well
+    printf("  sub rsp, %d\n", fn->stack_size); // TODO: reserve registers (R12-R15) as well
 
     store_args(fn->params);
 

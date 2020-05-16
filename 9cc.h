@@ -122,19 +122,14 @@ struct Node {
   int val;    // used when kind == ND_NUM
 };
 
-typedef struct ScopedContext ScopedContext;
-struct ScopedContext {
-  Var *locals;
-  int stack_size;
-};
-
 typedef struct Function Function;
 struct Function {
   Function *next;
   char *name;
   Var *params;
   Node *node;
-  ScopedContext *context;
+  Var *locals;
+  int stack_size;
 };
 
 typedef struct Program Program;

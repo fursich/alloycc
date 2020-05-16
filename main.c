@@ -18,14 +18,13 @@ int main(int argc, char **argv) {
   Program *prog = parse();
 
   for (Function *fn = prog->fns; fn; fn = fn->next) {
-    ScopedContext *ctx = fn->context;
     int offset = 0;
 
-    for (Var *var = ctx->locals; var; var = var->next) {
+    for (Var *var = fn->locals; var; var = var->next) {
       offset += var->ty->size;
       var->offset = offset;
     }
-    ctx->stack_size = align_to(offset, 16);
+    fn->stack_size = align_to(offset, 16);
   }
 
   codegen(prog);

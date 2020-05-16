@@ -4,8 +4,41 @@
 // Parser
 //
 
+// Scope for local or global vars (incl. string literal)
+typedef struct VarScope VarScope;
+struct VarScope {
+  VarScope *next;
+  char *name;
+  int depth;
+  Var *var;
+};
+
 Var *locals;
 Var *globals;
+
+static VarScope *var_scope;
+static int scope_depth;
+
+static void enter_scope() {
+  scope_depth++;
+}
+
+static void leave_scope() {
+  scope_depth--;
+  // remove deeper-scoped vars from the end of the chain
+  while (var_scope && var_scope->depth > scope_depth)
+    var_scope = var_scope->next;
+}
+
+static VarScope *push_scope(char *name, Var *var) {
+  VarScope *sc = calloc(1, sizeof(VarScope));
+  sc->name = name;
+  sc->var = var;
+  sc->depth = scope_depth;
+  sc->next = var_scope;
+  var_scope = sc;
+  return sc;
+}
 
 static Program *new_program() {
   Program *prog = calloc(1, sizeof(Program));
@@ -17,12 +50,6 @@ static Function *new_function(Type *ty) {
   func->name = ty->identifier;
   // TODO: consider return type: func->return_ty = ty;
   return func;
-}
-
-static ScopedContext *new_context(Var *lcl) {
-  ScopedContext *ctx = calloc(1, sizeof(ScopedContext));
-  ctx->locals = lcl;
-  return ctx;
 }
 
 static Node *new_node(NodeKind kind, Token *token) {
@@ -39,14 +66,12 @@ static Var *new_var(Type *ty) {
   return var;
 }
 
-// XXX: No scopes implemehted, so it will simply overwrite old definition
-// if duplicated definition occurs
-// (no checks using lookup_var()
 static Var *new_lvar(Type *ty) {
   Var *var = new_var(ty);
   var->is_local = true;
   var->next = locals;
   locals = var;
+  push_scope(var->name, var);
   return var;
 }
 
@@ -55,7 +80,16 @@ static Var *new_gvar(Type *ty) {
   var->is_local = false;
   var->next = globals;
   globals = var;
+  push_scope(var->name, var);
   return var;
+}
+
+static Var *lookup_var(char *name) {
+  for (VarScope *sc = var_scope; sc; sc = sc->next) {
+    if (!strcmp(sc->name, name))
+      return sc->var;
+  }
+  return NULL;
 }
 
 static char *new_gvar_name() {
@@ -91,19 +125,6 @@ static Node *new_node_var(Var *var, Token *token) {
   Node *node = new_node(ND_VAR, token);
   node->var = var;
   return node;
-}
-
-static Var *lookup_var(char *name) {
-  for (Var *var = locals; var; var = var->next) {
-    if (!strcmp(var->name, name))
-      return var;
-  }
-
-  for (Var *var = globals; var; var = var->next) {
-    if (!strcmp(var->name, name))
-      return var;
-  }
-  return NULL;
 }
 
 static Node *new_node_num(int val, Token *token) {
@@ -309,6 +330,7 @@ static Function *funcdef(Type *ty) {
 
   Function *func = new_function(ty);
 
+  enter_scope();
   for (Type *t = ty->params; t; t = t->next) {
     Var *var = new_lvar(t); // TODO: check if this registratoin order make sense (first defined comes first, latter could overshadow the earlier)
   }
@@ -316,8 +338,9 @@ static Function *funcdef(Type *ty) {
   func->params = locals;
 
   func->node = block_stmt();
-  func->context = new_context(locals);
+  func->locals = locals;
 
+  leave_scope();
   return func;
 }
 
@@ -347,6 +370,8 @@ static Node *block_stmt() {
   Node *cur = &head;
   Token *start = token;
 
+  enter_scope();
+
   expect("{");
   while (!consume("}")) {
     if (is_typename())
@@ -356,6 +381,8 @@ static Node *block_stmt() {
 
     generate_type(cur);
   }
+
+  leave_scope();
 
   Node *node = new_node(ND_BLOCK, start);
   node->body = head.next;
