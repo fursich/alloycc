@@ -4,7 +4,7 @@ assert() {
   expected="$1"
   input="$2"
 
-  ./debug/9cc "$input" > debug/tmp.s || exit
+  echo "$input" | ./debug/9cc - > debug/tmp.s || exit
   cat <<-FUNC | gcc -c -xc -fno-common -o debug/tmp2.o -
     int ret1()  { return 1; }
     int ret42() { return 42; }

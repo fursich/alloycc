@@ -1,6 +1,7 @@
 #define _POSIX_C_SOURCE 200809L
 
 #include <ctype.h>
+#include <errno.h>
 #include <stdarg.h>
 #include <stdbool.h>
 #include <stdio.h>
@@ -45,9 +46,8 @@ char *expect_ident(void);
 char *expect_string(void);
 int expect_number(void);
 bool at_eof(void);
-Token *tokenize(void);
+Token *tokenize_file(char *path);
 
-extern char *user_input;
 extern Token *token;
 
 //
