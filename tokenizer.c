@@ -110,6 +110,21 @@ static bool is_alnum(char c) {
   return is_alpha(c) || ('0' <= c && c <='9');
 }
 
+static bool is_hex(char c) {
+  return ('0' <= c && c <= '9') ||
+         ('a' <= c && c <= 'f') ||
+         ('A' <= c && c <= 'F');
+}
+
+static int from_hex(char c) {
+  if ('0' <= c && c <= '9')
+    return c - '0';
+  if ('a' <= c && c <= 'f')
+    return c - 'a' + 10;
+  if ('A' <= c && c <= 'F')
+    return c - 'A' + 10;
+}
+
 static const char *starts_with_reserved(char *p) {
 
   static const char *keywords[] = {
@@ -157,6 +172,23 @@ static char read_escaped_char(char **pos, char *p) {
       c = (c << 3) | (*p++ - '0');
       if ('0' <= *p && *p <= '7')
         c = (c << 3) | (*p++ - '0');
+    }
+
+    *pos = p;
+    return c;
+  }
+
+  if (*p == 'x') {
+    // Read a hexadecimal number.
+    p++;
+    if (!is_hex(*p))
+      error_at(p, "invalid hex escape sequence");
+
+    int c = 0;
+    for (; is_hex(*p); *p++) {
+      c = (c << 4) | from_hex(*p);
+      if (c > 255)
+        error_at(p, "hex escape sequence out of range");
     }
 
     *pos = p;
