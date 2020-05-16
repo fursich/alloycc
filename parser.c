@@ -584,11 +584,30 @@ static Node *postfix() {
   return node;
 }
 
-// primary = "(" expr ")" | "sizeof" unary | func_or_var | str | num
+// primary = "(" "{" stmt stmt* "}" ")"
+//           | "(" expr ")"
+//           | "sizeof" unary
+//           | func_or_var
+//           | str
+//           | num
 static Node *primary() {
   Token *start = token;
 
   if (consume("(")) {
+    if (equal("{")) {
+      Node *node = new_node(ND_STMT_EXPR, start);
+      node->body = block_stmt()->body;
+      expect(")");
+
+      Node *cur = node->body;
+      while(cur && cur->next)
+        cur = cur->next;
+
+      if (!cur || cur->kind != ND_EXPR_STMT)
+        error_tok(start, "statement expression returning void is not supported");
+      return node;
+    }
+
     Node *node = expr();
     expect(")");
     return node;

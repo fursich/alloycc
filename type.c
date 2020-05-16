@@ -90,6 +90,13 @@ static void set_type_for_expr(Node *node) {
         node->ty = ty_int;
       return;
     }
+    case ND_STMT_EXPR: {
+      Node *stmt = node->body;
+      while (stmt->next)
+        stmt = stmt->next;
+      node->ty = stmt->lhs->ty;
+      return;
+    }
   }
 }
 

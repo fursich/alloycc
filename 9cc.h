@@ -74,6 +74,7 @@ typedef enum {
   ND_RETURN,    // "return"
   ND_BLOCK,     // compound statement
   ND_EXPR_STMT, // statement with expression (w/o return)
+  ND_STMT_EXPR, // statement expression (GNU extension)
   ND_FUNCALL,   // function call
   ND_VAR,       // local variables
   ND_NUM,       // Integer
@@ -110,7 +111,7 @@ struct Node {
   Node *init;
   Node *inc;
 
-  // block
+  // block or statement espression
   Node *body;
 
   // Function call

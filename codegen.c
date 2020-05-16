@@ -115,6 +115,12 @@ static void gen_expr(Node *node) {
     printf("  push rax\n");
     return;
   }
+  case ND_STMT_EXPR: {
+    for (Node *n = node->body; n; n = n->next)
+      gen_stmt(n);
+    printf("  sub rsp, 8\n");
+    return;
+  }
   case ND_VAR:
     gen_addr(node);
 
