@@ -33,6 +33,8 @@ struct Token {
 
   char *contents; // string literal contents, including '\0' terminator
   int cont_len; // string literal length
+
+  int line_no;
 };
 
 void error(char *fmt, ...);

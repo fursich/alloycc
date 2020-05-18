@@ -16,7 +16,7 @@ void error(char *fmt, ...) {
   exit(1);
 }
 
-static void verror_at(char *loc, char *fmt, va_list ap) {
+static void verror_at(int line_no, char *loc, char *fmt, va_list ap) {
 
   char *line = loc;
   while (current_input < line && line[-1] != '\n')
@@ -25,12 +25,6 @@ static void verror_at(char *loc, char *fmt, va_list ap) {
   char *end = loc;
   while (*end != '\n')
     end++;
-
-  int line_no = 1;
-  for (char *p = current_input; p < line; p++) {
-    if (*p == '\n')
-      line_no++;
-  }
 
   // Print out the line
   int indent = fprintf(stderr, "%s:%d: ", current_filename, line_no);
@@ -48,17 +42,23 @@ static void verror_at(char *loc, char *fmt, va_list ap) {
 }
 
 void error_at(char *loc, char *fmt, ...) {
+  int line_no = 1;
+  for (char *p = current_input; p < loc; p++) {
+    if (*p == '\n')
+      line_no++;
+  }
+
   va_list ap;
   va_start(ap, fmt);
 
-  verror_at(loc, fmt, ap);
+  verror_at(line_no, loc, fmt, ap);
 }
 
 void error_tok(Token *tok, char *fmt, ...) {
   va_list ap;
   va_start(ap, fmt);
 
-  verror_at(tok->str, fmt, ap);
+  verror_at(tok->line_no, tok->str, fmt, ap);
 }
 
 /* compare token name (str) without consuming it (no checks are done against its kind) */
@@ -275,6 +275,20 @@ static void convert_keywords(Token *tok) {
       t->kind = TK_RESERVED;
 }
 
+static void add_line_info(Token *tok) {
+  char *p = current_input;
+  int line_no = 1;
+  
+  do {
+    if (p == tok->str) {
+      tok->line_no = line_no;
+      tok = tok->next;
+    }
+    if (*p == '\n')
+      line_no++;
+  } while(*p++);
+}
+
 static Token *tokenize() {
   char *p = current_input;
   Token head;
@@ -341,6 +355,7 @@ static Token *tokenize() {
   }
 
   new_token(TK_EOF, cur, p, 0);
+  add_line_info(head.next);
   convert_keywords(head.next);
 
   return head.next;
