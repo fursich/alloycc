@@ -131,6 +131,29 @@ static bool is_alnum(char c) {
   return is_alpha(c) || ('0' <= c && c <='9');
 }
 
+static bool is_keyword(Token *tok) {
+  static const char *keywords[] = {
+    "if",
+    "else",
+    "while",
+    "for",
+    "return",
+    "int",
+    "char",
+    "sizeof",
+  };
+
+  /* Keywords */
+  for (int i = 0; i < sizeof(keywords) / sizeof(*keywords); i++) {
+    const char *kw = keywords[i];
+    int len = strlen(kw);
+
+    if (strlen(kw) == tok->len && !strncmp(tok->str, kw, tok->len))
+      return true;
+  }
+  return false;
+}
+
 static bool is_hex(char c) {
   return ('0' <= c && c <= '9') ||
          ('a' <= c && c <= 'f') ||
@@ -146,28 +169,8 @@ static int from_hex(char c) {
     return c - 'A' + 10;
 }
 
-static const char *starts_with_reserved(char *p) {
-
-  static const char *keywords[] = {
-    "if",
-    "else",
-    "while",
-    "for",
-    "return",
-    "int",
-    "char",
-    "sizeof",
-  };
-
-  /* Keywords */
-  for (int i = 0; i < sizeof(keywords) / sizeof(*keywords); i++) {
-    int len = strlen(keywords[i]);
-
-    if (startswith(p, keywords[i]) && !is_alnum(p[len]))
-      return keywords[i];
-  }
-
-  static const char *operators[] = {
+static Token *read_operators(Token *cur, char *start) {
+  static const char *multi_letter_ops[] = {
     "==",
     "!=",
     ">=",
@@ -175,14 +178,21 @@ static const char *starts_with_reserved(char *p) {
   };
 
   /* Reserved Symbol: Multi-letter punctuators */
-  for (int i = 0; i < sizeof(operators) / sizeof(*operators); i++) {
-    int len = strlen(operators[i]);
+  for (int i = 0; i < sizeof(multi_letter_ops) / sizeof(*multi_letter_ops); i++) {
+    int len = strlen(multi_letter_ops[i]);
 
-    if (startswith(p, operators[i]) && !is_alnum(p[len]))
-      return operators[i];
+    if (startswith(start , multi_letter_ops[i])) {
+      Token *token = new_token(TK_RESERVED, cur, start, len);
+      return token;
+    }
   }
 
-  return NULL;
+  /* Reserved Symbol: Single-letter punctuators */
+  /* NOTE: when put ahead of identifier detection, this will mis-detect identifiers that start with '_' */
+  if (ispunct(*start)) {
+    Token *token = new_token(TK_RESERVED, cur, start, 1);
+    return token;
+  }
 }
 
 static char read_escaped_char(char **pos, char *p) {
@@ -259,6 +269,12 @@ static Token *read_string_literal(Token *cur, char *start) {
   return tok;
 }
 
+static void convert_keywords(Token *tok) {
+  for (Token *t = tok; t->kind != TK_EOF; t = t->next)
+    if (t->kind == TK_IDENT && is_keyword(t))
+      t->kind = TK_RESERVED;
+}
+
 static Token *tokenize() {
   char *p = current_input;
   Token head;
@@ -304,16 +320,7 @@ static Token *tokenize() {
       continue;
     }
 
-    /* Keywords and multi-letter Symbols */
-    const char *kw = starts_with_reserved(p);
-    if (kw) {
-      int len = strlen(kw);
-      cur = new_token(TK_RESERVED, cur, p, len);
-      p += len;
-      continue;
-    }
-
-    /* Identifier */
+    /* Identifier and keywords*/
     if (is_alpha(*p)) {
       char *p0 = p++;
       while (is_alnum(*p))
@@ -322,10 +329,11 @@ static Token *tokenize() {
       continue;
     }
 
-    /* Reserved Symbol: Single-letter punctuators */
+    /* Single-letter and multi-letter punctuators */
     /* NOTE: when put ahead of identifier detection, this will mis-detect identifiers that start with '_' */
     if (ispunct(*p)) {
-      cur = new_token(TK_RESERVED, cur, p++, 1);
+      cur = read_operators(cur, p);
+      p += cur->len;
       continue;
     }
 
@@ -333,6 +341,8 @@ static Token *tokenize() {
   }
 
   new_token(TK_EOF, cur, p, 0);
+  convert_keywords(head.next);
+
   return head.next;
 }
 
