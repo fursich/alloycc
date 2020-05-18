@@ -70,6 +70,9 @@ static void set_type_for_expr(Node *node) {
     case ND_FUNCALL:
       node->ty = ty_int; // TODO: use return_ty
       return;
+    case ND_COMMA:
+      node->ty = node->rhs->ty;
+      return;
     case ND_VAR:
       node->ty = node->var->ty;
       return;

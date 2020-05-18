@@ -30,6 +30,11 @@ static void gen_addr(Node *node) {
     case ND_DEREF: // *(foo + 8) = 123; (DEREF as lvalue)
       gen_expr(node->lhs);
       return;
+    case ND_COMMA:
+      gen_expr(node->lhs);
+      printf("  add rsp, 8\n");
+      gen_addr(node->rhs);
+      return;
   }
 
   error_tok(node->token, "not an lvalue");
@@ -123,6 +128,11 @@ static void gen_expr(Node *node) {
     printf("  sub rsp, 8\n");
     return;
   }
+  case ND_COMMA:
+    gen_expr(node->lhs);
+    printf("  add rsp, 8\n");
+    gen_expr(node->rhs);
+    return;
   case ND_VAR:
     gen_addr(node);
 

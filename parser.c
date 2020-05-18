@@ -500,9 +500,16 @@ static Node *expr_stmt() {
   return node;
 }
 
-// expr = assign
+// expr = assign ( "," expr )?
 static Node *expr() {
-  return assign();
+  Node *node = assign();
+
+  // supporting "generized lvalue" supported by past GCC (already deprecated)
+  // implemeted for convenient use
+  if (consume(","))
+    node = new_node_binary(ND_COMMA, node, expr(), token);
+
+  return node;
 }
 
 // assign = equality ("=" assign)?
@@ -679,7 +686,7 @@ static Node *func_or_var() {
   return new_node_var(var, start);
 }
 
-// arg_list = (expr (, expr)*)?
+// arg_list = (assign (, assign)*)?
 static Node *arg_list() {
   Node head = {0};
   Node *cur = &head;
@@ -687,7 +694,7 @@ static Node *arg_list() {
   while (!equal(")")) {
     if (cur != &head)
       expect(",");
-    cur = cur->next = expr();
+    cur = cur->next = assign();
   }
 
   return head.next;
