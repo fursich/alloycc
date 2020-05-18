@@ -4,3 +4,5 @@ tmp.*
 tmp
 *.o
 debug/
+test/*
+!test/*.c
