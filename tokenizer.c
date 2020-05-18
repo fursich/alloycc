@@ -5,7 +5,7 @@
 //
 
 Token *token;
-static char *current_filename;
+char *current_filename;
 static char *current_input;
 
 void error(char *fmt, ...) {

@@ -51,6 +51,7 @@ bool at_eof(void);
 Token *tokenize_file(char *path);
 
 extern Token *token;
+extern char *current_filename;
 
 //
 // parser.c
