@@ -141,6 +141,7 @@ static bool is_keyword(Token *tok) {
     "int",
     "char",
     "sizeof",
+    "struct",
   };
 
   /* Keywords */

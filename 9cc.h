@@ -10,6 +10,7 @@
 #include <assert.h>
 
 typedef struct Type Type;
+typedef struct Member Member;
 
 //
 // tokenize.c
@@ -68,6 +69,7 @@ typedef enum {
 
   ND_ASSIGN,    // =
   ND_COMMA,     // ,
+  ND_MEMBER,    // . (struct member)
   ND_EQ,        // ==
   ND_NE,        // !=
   ND_LT,        // <
@@ -118,6 +120,9 @@ struct Node {
   // block or statement espression
   Node *body;
 
+  // struct member access
+  Member *member;
+
   // Function call
   char *funcname;
   Node *args;
@@ -159,6 +164,7 @@ typedef enum {
   TY_PTR,
   TY_FUNC,
   TY_ARRAY,
+  TY_STRUCT,
 } TypeKind;
 
 struct Type {
@@ -174,10 +180,21 @@ struct Type {
 
   // array
   int array_len;
+
+  // struct
+  Member *members;
+};
+
+struct Member {
+  Member *next;
+  Type *ty;
+  char *name;
+  int offset;
 };
 
 extern Type *ty_char;
 extern Type *ty_int;
+Type *new_type(TypeKind kind, int size);
 Type *pointer_to(Type *base);
 Type *copy_ty(Type *ty);
 Type *func_returning(Type *ty);

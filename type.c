@@ -73,6 +73,9 @@ static void set_type_for_expr(Node *node) {
     case ND_COMMA:
       node->ty = node->rhs->ty;
       return;
+    case ND_MEMBER:
+      node->ty = node->member->ty;
+      return;
     case ND_VAR:
       node->ty = node->var->ty;
       return;

@@ -35,6 +35,12 @@ static void gen_addr(Node *node) {
       printf("  add rsp, 8\n");
       gen_addr(node->rhs);
       return;
+    case ND_MEMBER:
+      gen_addr(node->lhs);
+      printf("  pop rax\n");
+      printf("  add rax, %d\n", node->member->offset);
+      printf("  push rax\n");
+      return;
   }
 
   error_tok(node->token, "not an lvalue");
@@ -134,6 +140,7 @@ static void gen_expr(Node *node) {
     gen_expr(node->rhs);
     return;
   case ND_VAR:
+  case ND_MEMBER:
     gen_addr(node);
 
     load(node->ty);

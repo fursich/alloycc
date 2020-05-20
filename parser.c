@@ -66,6 +66,13 @@ static Var *new_var(Type *ty) {
   return var;
 }
 
+static Member *new_member(Type *ty) {
+  Member *mem = calloc(1, sizeof(Member));
+  mem->name = ty->identifier;
+  mem->ty= ty;
+  return mem;
+}
+
 static Var *new_lvar(Type *ty) {
   Var *var = new_var(ty);
   var->is_local = true;
@@ -191,6 +198,7 @@ static Node *declaration(void);
 
 static Function *funcdef(Type *ty);
 static Type *func_params(void);
+static Type *struct_decl(void);
 
 static Node *block_stmt(void);
 static Node *stmt(void);
@@ -246,13 +254,18 @@ Program *parse() {
   return prog;
 }
 
-// typespec = "int" | "char"
+// typespec = "int" | "char" | "struct" struct_decl
 static Type *typespec() {
   if (consume("char"))
     return ty_char;
 
-  expect("int");
-  return ty_int;
+  if (consume("int"))
+    return ty_int;
+
+  if (consume("struct"))
+    return struct_decl();
+
+  error_tok(token, "typename expected");
 }
 
 // type-suffix = "(" func-params ")"
@@ -320,7 +333,49 @@ static Node *declaration() {
 
 // whether given token reprents a type
 static bool is_typename() {
-  return equal("char") || equal("int");
+  return equal("char") || equal("int") || equal("struct");
+}
+
+// struct-members = (typespec declarator ("," declarator)* ";")*
+static Member *struct_members() {
+  Member head = {0};
+  Member *cur = &head;
+
+  while (!equal("}")) {
+    Type *basety = typespec();
+    int cnt = 0;
+
+    while (!consume(";")) {
+      if (cnt++)
+        expect(",");
+
+      Type *ty = declarator(basety);
+      Member *mem = new_member(ty);
+      cur = cur->next = mem;
+    }
+  }
+
+  return head.next;
+}
+
+// struct-decl = "{" struct-members "}"
+static Type *struct_decl() {
+
+  expect("{");
+
+  Type *ty = new_type(TY_STRUCT, 0);
+  ty->members = struct_members();
+
+  int offset = 0;
+  for (Member *mem = ty->members; mem; mem = mem->next) {
+    mem->offset = offset;
+    offset += mem->ty->size;
+  }
+  ty->size = offset;
+
+  expect("}");
+
+  return ty;
 }
 
 // funcdef = { block_stmt }
@@ -603,19 +658,45 @@ static Node *unary() {
   return postfix();
 }
 
-// postfix = primary ("[" expr "]")*
+static Member *get_struct_member(Type *ty, Token *tok) {
+  for (Member *mem = ty->members; mem; mem = mem->next)
+    if (!strncmp(mem->name, tok->str, tok->len))
+      return mem;
+  error_tok(tok, "no such member");
+}
+
+static Node *struct_ref(Node *lhs, Token *tok) {
+  generate_type(lhs);
+  if (lhs->ty->kind != TY_STRUCT)
+    error_tok(lhs->token, "not a struct");
+
+  Node *node = new_node_unary(ND_MEMBER, lhs, tok);
+  node->member = get_struct_member(lhs->ty, tok);
+  return node;
+}
+
+// postfix = primary ("[" expr "]" | "." ident)*
 static Node *postfix() {
   Node *node = primary();
 
-  while (consume("["))  {
-    // x[y] is syntax sugar for *(x + y)
-    Token *start = token;
-    Node *idx = expr();
-    expect("]");
-    node = new_node_unary(ND_DEREF, new_node_add(node, idx, start), start);
-  }
+  for (;;) {
+    if (consume("["))  {
+      // x[y] is syntax sugar for *(x + y)
+      Token *start = token;
+      Node *idx = expr();
+      expect("]");
+      node = new_node_unary(ND_DEREF, new_node_add(node, idx, start), start);
+      continue;
+    }
 
-  return node;
+    if (consume(".")) {
+      node = struct_ref(node, token);
+      expect_ident();
+      continue;
+    }
+
+    return node;
+  }
 }
 
 // primary = "(" "{" stmt stmt* "}" ")"
