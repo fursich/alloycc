@@ -170,6 +170,7 @@ typedef enum {
 struct Type {
   TypeKind kind;
   int size;       // used as sizeof() value
+  int align;      // alignment
   Type *base;
   char *identifier;
 
@@ -194,7 +195,8 @@ struct Member {
 
 extern Type *ty_char;
 extern Type *ty_int;
-Type *new_type(TypeKind kind, int size);
+Type *new_type(TypeKind kind, int size, int align);
+int align_to(int n, int align);
 Type *pointer_to(Type *base);
 Type *copy_ty(Type *ty);
 Type *func_returning(Type *ty);
