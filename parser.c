@@ -725,14 +725,14 @@ static Node *struct_ref(Node *lhs, Token *tok) {
   return node;
 }
 
-// postfix = primary ("[" expr "]" | "." ident)*
+// postfix = primary ("[" expr "]" | "." ident | "->" ident)*
 static Node *postfix() {
+  Token *start = token;
   Node *node = primary();
 
   for (;;) {
     if (consume("["))  {
       // x[y] is syntax sugar for *(x + y)
-      Token *start = token;
       Node *idx = expr();
       expect("]");
       node = new_node_unary(ND_DEREF, new_node_add(node, idx, start), start);
@@ -740,6 +740,13 @@ static Node *postfix() {
     }
 
     if (consume(".")) {
+      node = struct_ref(node, token);
+      expect_ident();
+      continue;
+    }
+
+    if (consume("->")) {
+      node = new_node_unary(ND_DEREF, node, start);
       node = struct_ref(node, token);
       expect_ident();
       continue;
