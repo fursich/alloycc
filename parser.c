@@ -13,10 +13,20 @@ struct VarScope {
   Var *var;
 };
 
+// Scope for struct tags
+typedef struct TagScope TagScope;
+struct TagScope {
+  TagScope *next;
+  char *name;
+  int depth;
+  Type *ty;
+};
+
 Var *locals;
 Var *globals;
 
 static VarScope *var_scope;
+static TagScope *tag_scope;
 static int scope_depth;
 
 static void enter_scope() {
@@ -28,6 +38,9 @@ static void leave_scope() {
   // remove deeper-scoped vars from the end of the chain
   while (var_scope && var_scope->depth > scope_depth)
     var_scope = var_scope->next;
+
+  while (tag_scope && tag_scope->depth > scope_depth)
+    tag_scope = tag_scope->next;
 }
 
 static VarScope *push_scope(char *name, Var *var) {
@@ -37,6 +50,16 @@ static VarScope *push_scope(char *name, Var *var) {
   sc->depth = scope_depth;
   sc->next = var_scope;
   var_scope = sc;
+  return sc;
+}
+
+static TagScope *push_tag_scope(char *name, Type *ty) {
+  TagScope *sc = calloc(1, sizeof(TagScope));
+  sc->name = name;
+  sc->ty = ty;
+  sc->depth = scope_depth;
+  sc->next = tag_scope;
+  tag_scope = sc;
   return sc;
 }
 
@@ -95,6 +118,14 @@ static Var *lookup_var(char *name) {
   for (VarScope *sc = var_scope; sc; sc = sc->next) {
     if (!strcmp(sc->name, name))
       return sc->var;
+  }
+  return NULL;
+}
+
+static Type *lookup_tag(char *name) {
+  for (TagScope *sc = tag_scope; sc; sc = sc->next) {
+    if (!strcmp(sc->name, name))
+      return sc->ty;
   }
   return NULL;
 }
@@ -358,11 +389,23 @@ static Member *struct_members() {
   return head.next;
 }
 
-// struct-decl = "{" struct-members "}"
+// struct-decl = ident? "{" struct-members "}"
 static Type *struct_decl() {
+  // Read a struct tag
+  char *tag_name = NULL;
+  Token *start = token;
+
+  if (token->kind == TK_IDENT)
+    tag_name = expect_ident();
+
+  if (tag_name && !equal("{")) {
+    Type *ty = lookup_tag(tag_name);
+    if (!ty)
+      error_tok(start, "unknown struct type");
+    return ty;
+  }
 
   expect("{");
-
   Type *ty = new_type(TY_STRUCT, 0, 0);
   ty->members = struct_members();
 
@@ -376,8 +419,11 @@ static Type *struct_decl() {
       ty->align = mem->ty->align;
   }
   ty->size = align_to(offset, ty->align);
-
   expect("}");
+
+  // Register the struct type if name is given
+  if (tag_name)
+    push_tag_scope(tag_name, ty);
 
   return ty;
 }
