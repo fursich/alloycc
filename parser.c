@@ -230,6 +230,7 @@ static Node *declaration(void);
 static Function *funcdef(Type *ty);
 static Type *func_params(void);
 static Type *struct_decl(void);
+static Type *union_decl(void);
 
 static Node *block_stmt(void);
 static Node *stmt(void);
@@ -285,7 +286,7 @@ Program *parse() {
   return prog;
 }
 
-// typespec = "int" | "char" | "struct" struct_decl
+// typespec = "int" | "char" | "struct" struct_decl | "union" union-decl
 static Type *typespec() {
   if (consume("char"))
     return ty_char;
@@ -295,6 +296,9 @@ static Type *typespec() {
 
   if (consume("struct"))
     return struct_decl();
+
+  if (consume("union"))
+    return union_decl();
 
   error_tok(token, "typename expected");
 }
@@ -364,11 +368,11 @@ static Node *declaration() {
 
 // whether given token reprents a type
 static bool is_typename() {
-  return equal("char") || equal("int") || equal("struct");
+  return equal("char") || equal("int") || equal("struct") || equal("union");
 }
 
-// struct-members = (typespec declarator ("," declarator)* ";")*
-static Member *struct_members() {
+// struct-union-members = (typespec declarator ("," declarator)* ";")*
+static Member *struct_union_members() {
   Member head = {0};
   Member *cur = &head;
 
@@ -389,9 +393,9 @@ static Member *struct_members() {
   return head.next;
 }
 
-// struct-decl = ident? "{" struct-members "}"
-static Type *struct_decl() {
-  // Read a struct tag
+// struct-union-decl = ident? ("{" struct-union-members "}"
+static Type *struct_union_decl() {
+  // Read the tag (if any)
   char *tag_name = NULL;
   Token *start = token;
 
@@ -407,7 +411,19 @@ static Type *struct_decl() {
 
   expect("{");
   Type *ty = new_type(TY_STRUCT, 0, 0);
-  ty->members = struct_members();
+  ty->members = struct_union_members();
+  expect("}");
+
+  // Register the struct type if name is given
+  if (tag_name)
+    push_tag_scope(tag_name, ty);
+
+  return ty;
+}
+
+// struct-decl = struct-union-decl
+static Type *struct_decl() {
+  Type *ty = struct_union_decl();
 
   int offset = 0;
   for (Member *mem = ty->members; mem; mem = mem->next) {
@@ -419,11 +435,24 @@ static Type *struct_decl() {
       ty->align = mem->ty->align;
   }
   ty->size = align_to(offset, ty->align);
-  expect("}");
 
-  // Register the struct type if name is given
-  if (tag_name)
-    push_tag_scope(tag_name, ty);
+  return ty;
+}
+
+// union-decl = struct-union-decl
+static Type *union_decl() {
+  Type *ty = struct_union_decl();
+
+  // for union, all the offsets has to stay zero, meaning we
+  // just need to leave these values unchanged after initialization.
+  // Nonetheless alignment and size should be properly calculated.
+  for (Member *mem = ty->members; mem; mem = mem->next) {
+    if (ty->align < mem->ty->align)
+      ty->align = mem->ty->align;
+    if (ty->size< mem->ty->size)
+      ty->size = mem->ty->size;
+  }
+  ty->size = align_to(ty->size, ty->align);
 
   return ty;
 }
