@@ -47,7 +47,7 @@ static void gen_addr(Node *node) {
 }
 
 static void load(Type *ty) {
-  if (ty->kind == TY_ARRAY) {
+  if (ty->kind == TY_ARRAY || ty->kind == TY_STRUCT) {
     // NOOP for array type node
     // an entire array cannot be "loaded". Instead the variable
     // is interperted as the address of the first element
@@ -66,15 +66,21 @@ static void load(Type *ty) {
 }
 
 static void store(Type *ty) {
+  printf("  pop rsi\n");
   printf("  pop rdi\n");
-  printf("  pop rax\n");
 
-  if (ty->size == 1)
-    printf("  mov [rax], dil\n");
-  else
-    printf("  mov [rax], rdi\n");
+  if (ty->kind == TY_STRUCT) {
+    for (int i = 0; i < ty->size; i++) {
+      printf("  mov al, [rsi+%d]\n", i);
+      printf("  mov [rdi+%d], al\n", i);
+    }
+  } else if (ty->size == 1) {
+    printf("  mov [rdi], sil\n");
+  } else {
+    printf("  mov [rdi], rsi\n");
+  }
 
-  printf("  push rdi\n");
+  printf("  push rsi\n");
 }
 
 static void load_args(Node *args) {
