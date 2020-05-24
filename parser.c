@@ -330,11 +330,18 @@ static Type *type_suffix(Type *ty) {
   return ty;
 }
 
-// declarator = "*"* ident type-suffix
-// TODO: to consider "(" declarator ")" | type-suffix+
+// declarator = "*"* ("(" declarator ")" | ident) type-suffix
 static Type *declarator(Type *ty) {
   while (consume("*"))
     ty = pointer_to(ty);
+
+  if (consume("(")) {
+    Type *placeholder = calloc(1, sizeof(Type));
+    Type *new_ty = declarator(placeholder);
+    expect(")");
+    *placeholder = *type_suffix(ty);
+    return new_ty;
+  }
 
   char *name = expect_ident();
   ty = type_suffix(ty);
