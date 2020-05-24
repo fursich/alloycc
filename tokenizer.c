@@ -83,10 +83,15 @@ void expect(char *op) {
 }
 
 char *expect_ident() {
-  if (token->kind != TK_IDENT)
-    error_at(token->str, "expected an identifier");
-  char *name = strndup(token->str, token->len);
+  char *name = get_identifier(token);
   token = token->next;
+  return name;
+}
+
+char *get_identifier(Token *tok) {
+  if (tok->kind != TK_IDENT)
+    error_at(tok->str, "expected an identifier");
+  char *name = strndup(tok->str, tok->len);
   return name;
 }
 

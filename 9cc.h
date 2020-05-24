@@ -46,6 +46,7 @@ void skip(char *op);
 bool consume(char *op);
 void expect(char *op);
 char *expect_ident(void);
+char *get_identifier(Token *tok);
 char *expect_string(void);
 int expect_number(void);
 bool at_eof(void);
@@ -174,7 +175,9 @@ struct Type {
   int size;       // used as sizeof() value
   int align;      // alignment
   Type *base;
-  char *identifier;
+
+  // used for declaration
+  Token *ident;
 
   // function
   Type *return_ty;

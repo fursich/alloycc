@@ -70,7 +70,7 @@ static Program *new_program() {
 
 static Function *new_function(Type *ty) {
   Function *func = calloc(1, sizeof(Function));
-  func->name = ty->identifier;
+  func->name = get_identifier(ty->ident);
   // TODO: consider return type: func->return_ty = ty;
   return func;
 }
@@ -82,22 +82,22 @@ static Node *new_node(NodeKind kind, Token *token) {
   return node;
 }
 
-static Var *new_var(Type *ty) {
+static Var *new_var(char *name, Type *ty) {
   Var *var = calloc(1, sizeof(Var));
-  var->name = ty->identifier;
+  var->name = name;
   var->ty= ty;
   return var;
 }
 
-static Member *new_member(Type *ty) {
+static Member *new_member(char *name, Type *ty) {
   Member *mem = calloc(1, sizeof(Member));
-  mem->name = ty->identifier;
+  mem->name = name;
   mem->ty= ty;
   return mem;
 }
 
-static Var *new_lvar(Type *ty) {
-  Var *var = new_var(ty);
+static Var *new_lvar(char *name, Type *ty) {
+  Var *var = new_var(name, ty);
   var->is_local = true;
   var->next = locals;
   locals = var;
@@ -105,8 +105,8 @@ static Var *new_lvar(Type *ty) {
   return var;
 }
 
-static Var *new_gvar(Type *ty) {
-  Var *var = new_var(ty);
+static Var *new_gvar(char *name, Type *ty) {
+  Var *var = new_var(name, ty);
   var->is_local = false;
   var->next = globals;
   globals = var;
@@ -140,8 +140,7 @@ static char *new_gvar_name() {
 
 static Var *new_string_literal(char *s, int len) {
   Type *ty = array_of(ty_char, len);
-  ty->identifier = new_gvar_name();
-  Var *var = new_gvar(ty);
+  Var *var = new_gvar(new_gvar_name(), ty);
   var->init_data = s;
   return var;
 }
@@ -273,7 +272,7 @@ Program *parse() {
 
     // global variable = typespec declarator ("," declarator)* ";"
     for (;;) {
-      new_gvar(ty);
+      new_gvar(get_identifier(ty->ident), ty);
       if (consume(";"))
         break;
       expect(",");
@@ -345,10 +344,11 @@ static Type *declarator(Type *ty) {
     return new_ty;
   }
 
-  char *name = expect_ident();
-  ty = type_suffix(ty);
+  Token *ident = token;
+  expect_ident();
 
-  ty->identifier = name;
+  ty = type_suffix(ty);
+  ty->ident = ident;
   return ty;
 }
 
@@ -366,7 +366,7 @@ static Node *declaration() {
 
     Token *start = token;
     Type *ty = declarator(basety);
-    Var *var = new_lvar(ty);
+    Var *var = new_lvar(get_identifier(ty->ident), ty);
 
     Node *node = new_node_var(var, token);
     if (consume("="))
@@ -401,7 +401,7 @@ static Member *struct_union_members() {
         expect(",");
 
       Type *ty = declarator(basety);
-      Member *mem = new_member(ty);
+      Member *mem = new_member(get_identifier(ty->ident), ty);
       cur = cur->next = mem;
     }
   }
@@ -482,7 +482,7 @@ static Function *funcdef(Type *ty) {
 
   enter_scope();
   for (Type *t = ty->params; t; t = t->next) {
-    Var *var = new_lvar(t); // TODO: check if this registratoin order make sense (first defined comes first, latter could overshadow the earlier)
+    Var *var = new_lvar(get_identifier(t->ident), t); // TODO: check if this registratoin order make sense (first defined comes first, latter could overshadow the earlier)
   }
 
   func->params = locals;
