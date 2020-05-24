@@ -138,9 +138,14 @@ static bool is_keyword(Token *tok) {
     "while",
     "for",
     "return",
-    "int",
-    "char",
+
     "sizeof",
+
+    "char",
+    "short",
+    "int",
+    "long",
+
     "struct",
     "union",
   };

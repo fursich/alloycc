@@ -160,7 +160,9 @@ void codegen(Program *prog);
 //
 typedef enum {
   TY_CHAR,
+  TY_SHORT,
   TY_INT,
+  TY_LONG,
   TY_PTR,
   TY_FUNC,
   TY_ARRAY,
@@ -194,7 +196,10 @@ struct Member {
 };
 
 extern Type *ty_char;
+extern Type *ty_short;
 extern Type *ty_int;
+extern Type *ty_long;
+
 Type *new_type(TypeKind kind, int size, int align);
 int align_to(int n, int align);
 Type *pointer_to(Type *base);

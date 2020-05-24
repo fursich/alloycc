@@ -286,13 +286,19 @@ Program *parse() {
   return prog;
 }
 
-// typespec = "int" | "char" | "struct" struct_decl | "union" union-decl
+// typespec = "char" | "int" | "short" | "long" | "struct" struct_dec | "union" union-decll
 static Type *typespec() {
   if (consume("char"))
     return ty_char;
 
+  if (consume("short"))
+    return ty_short;
+
   if (consume("int"))
     return ty_int;
+
+  if (consume("long"))
+    return ty_long;
 
   if (consume("struct"))
     return struct_decl();
@@ -368,7 +374,8 @@ static Node *declaration() {
 
 // whether given token reprents a type
 static bool is_typename() {
-  return equal("char") || equal("int") || equal("struct") || equal("union");
+  return equal("char") || equal("short") ||equal("int") ||
+         equal("long") || equal("struct") || equal("union");
 }
 
 // struct-union-members = (typespec declarator ("," declarator)* ";")*

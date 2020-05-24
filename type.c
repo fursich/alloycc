@@ -1,7 +1,9 @@
 #include "9cc.h"
 
-Type *ty_char = &(Type) {TY_CHAR, 1, 1};
-Type *ty_int = &(Type) {TY_INT, 4, 4};
+Type *ty_char  = &(Type) {TY_CHAR,  1, 1};
+Type *ty_short = &(Type) {TY_SHORT, 2, 2};
+Type *ty_int   = &(Type) {TY_INT,   4, 4};
+Type *ty_long  = &(Type) {TY_LONG,  8, 8};
 
 Type *new_type(TypeKind kind, int size, int align) {
   Type *ty = calloc(1, sizeof(Type));
@@ -43,7 +45,8 @@ Type *array_of(Type *base, int len) {
 }
 
 bool is_integer(Type *ty) {
-  return ty->kind == TY_CHAR || ty->kind == TY_INT;
+  return ty->kind == TY_CHAR || ty->kind == TY_SHORT || ty->kind == TY_INT ||
+         ty->kind == TY_LONG;
 }
 
 // types having its base type that 'behaves like' a pointer
@@ -64,13 +67,13 @@ static void set_type_for_expr(Node *node) {
     case ND_NE:
     case ND_LT:
     case ND_LE:
-      node->ty = ty_int; // TODO: bool?
+      node->ty = ty_long; // TODO: bool?
       return;
     case ND_NUM:
-      node->ty = ty_int;
+      node->ty = ty_long;
       return;
     case ND_FUNCALL:
-      node->ty = ty_int; // TODO: use return_ty
+      node->ty = ty_long; // TODO: use return_ty
       return;
     case ND_COMMA:
       node->ty = node->rhs->ty;
@@ -92,10 +95,9 @@ static void set_type_for_expr(Node *node) {
       return;
     case ND_DEREF: {
       Type *ty = node->lhs->ty;
-      if (is_pointer_like(ty))
-        node->ty = ty->base;
-      else
-        node->ty = ty_int;
+      if (!is_pointer_like(ty))
+        error_tok(node->token, "invalid pointer dereference");
+      node->ty = ty->base;
       return;
     }
     case ND_STMT_EXPR: {
