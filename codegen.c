@@ -57,13 +57,14 @@ static void load(Type *ty) {
     return;
   }
 
+  int sz = size_of(ty);
   printf("  pop rax\n");
 
-  if (ty->size == 1)
+  if (sz == 1)
     printf("  movsx rax, byte ptr [rax]\n");
-  else if (ty->size == 2)
+  else if (sz == 2)
     printf("  movsx rax, word ptr [rax]\n");
-  else if (ty->size == 4)
+  else if (sz == 4)
     printf("  movsxd rax, dword ptr [rax]\n");
   else
     printf("  mov rax, [rax]\n");
@@ -72,19 +73,21 @@ static void load(Type *ty) {
 }
 
 static void store(Type *ty) {
+  int sz = size_of(ty);
+
   printf("  pop rsi\n");
   printf("  pop rdi\n");
 
   if (ty->kind == TY_STRUCT) {
-    for (int i = 0; i < ty->size; i++) {
+    for (int i = 0; i < sz; i++) {
       printf("  mov al, [rsi+%d]\n", i);
       printf("  mov [rdi+%d], al\n", i);
     }
-  } else if (ty->size == 1) {
+  } else if (sz == 1) {
     printf("  mov [rdi], sil\n");
-  } else if (ty->size == 2) {
+  } else if (sz == 2) {
     printf("  mov [rdi], si\n");
-  } else if (ty->size == 4) {
+  } else if (sz == 4) {
     printf("  mov [rdi], esi\n");
   } else {
     printf("  mov [rdi], rsi\n");
@@ -113,11 +116,13 @@ static void store_args(Var *params) {
     i++;
 
   for (Var *arg = params; arg; arg = arg->next) {
-    if (arg->ty->size == 1)
+    int sz = size_of(arg->ty);
+
+    if (sz == 1)
       printf("  mov [rbp-%d], %s\n", arg->offset, argreg8[--i]);
-    else if (arg->ty->size == 2)
+    else if (sz == 2)
       printf("  mov [rbp-%d], %s\n", arg->offset, argreg16[--i]);
-    else if (arg->ty->size == 4)
+    else if (sz == 4)
       printf("  mov [rbp-%d], %s\n", arg->offset, argreg32[--i]);
     else
       printf("  mov [rbp-%d], %s\n", arg->offset, argreg64[--i]);
@@ -296,11 +301,11 @@ static void emit_data(Program *prog) {
     printf("%s:\n", var->name);
 
     if (!var->init_data) {
-      printf("  .zero %d\n", var->ty->size);
+      printf("  .zero %d\n", size_of(var->ty));
       continue;
     }
 
-    for (int i = 0; i < var->ty->size; i++) {
+    for (int i = 0; i < size_of(var->ty); i++) {
       printf("  .byte %d\n", var->init_data[i]);
     }
   }

@@ -160,6 +160,7 @@ void codegen(Program *prog);
 // type.c
 //
 typedef enum {
+  TY_VOID,
   TY_CHAR,
   TY_SHORT,
   TY_INT,
@@ -198,6 +199,8 @@ struct Member {
   int offset;
 };
 
+extern Type *ty_void;
+
 extern Type *ty_char;
 extern Type *ty_short;
 extern Type *ty_int;
@@ -209,6 +212,7 @@ Type *pointer_to(Type *base);
 Type *copy_ty(Type *ty);
 Type *func_returning(Type *ty);
 Type *array_of(Type *ty, int len);
+int size_of(Type *ty);
 bool is_integer(Type *ty);
 bool is_pointer_like(Type *ty);
 void generate_type(Node *node);

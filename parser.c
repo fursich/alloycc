@@ -191,7 +191,7 @@ static Node *new_node_add(Node *lhs, Node *rhs, Token *tok) {
 
   // ptr + number (multiplied by base size of ptr)
   if (is_pointer_like(lhs->ty) && is_integer(rhs->ty)) {
-    rhs = new_node_binary(ND_MUL, rhs, new_node_num(lhs->ty->base->size, tok), tok);
+    rhs = new_node_binary(ND_MUL, rhs, new_node_num(size_of(lhs->ty->base), tok), tok);
     return new_node_binary(ND_ADD, lhs, rhs, tok);
   }
 
@@ -208,14 +208,14 @@ static Node *new_node_sub(Node *lhs, Node *rhs, Token *tok) {
 
   // ptr - number (multiplied by base size of ptr)
   if (is_pointer_like(lhs->ty) && is_integer(rhs->ty)) {
-    rhs = new_node_binary(ND_MUL, rhs, new_node_num(lhs->ty->base->size, tok), tok);
+    rhs = new_node_binary(ND_MUL, rhs, new_node_num(size_of(lhs->ty->base), tok), tok);
     return new_node_binary(ND_SUB, lhs, rhs, tok);
   }
 
   // ptr - ptr: returns how many elements are between the two
   if (is_pointer_like(lhs->ty) && is_pointer_like(rhs->ty)) {
     Node *node = new_node_binary(ND_SUB, lhs, rhs, tok);
-    return new_node_binary(ND_DIV, node, new_node_num(lhs->ty->base->size, tok), tok);
+    return new_node_binary(ND_DIV, node, new_node_num(size_of(lhs->ty->base), tok), tok);
   }
 
   // number - ptr (illegal)
@@ -287,8 +287,12 @@ Program *parse() {
   return prog;
 }
 
-// typespec = "char" | "int" | "short" | "long" | "struct" struct_dec | "union" union-decll
+// typespec = "void" | "char" | "int" | "short" | "long" |
+//            "struct" struct_dec | "union" union-decll
 static Type *typespec() {
+  if (consume("void"))
+    return ty_void;
+
   if (consume("char"))
     return ty_char;
 
@@ -366,6 +370,9 @@ static Node *declaration() {
 
     Token *start = token;
     Type *ty = declarator(basety);
+    if (ty->kind == TY_VOID)
+      error_tok(start, "variable declared void");
+
     Var *var = new_lvar(get_identifier(ty->ident), ty);
 
     Node *node = new_node_var(var, token);
@@ -383,8 +390,15 @@ static Node *declaration() {
 
 // whether given token reprents a type
 static bool is_typename() {
-  return equal("char") || equal("short") ||equal("int") ||
-         equal("long") || equal("struct") || equal("union");
+  static char *kw[] = {
+    "void", "char", "short", "int", "long", "struct", "union"
+  };
+
+  for (int i = 0; i < sizeof(kw) / sizeof(*kw); i++)
+    if (equal(kw[i]))
+      return true;
+
+  return false;
 }
 
 // struct-union-members = (typespec declarator ("," declarator)* ";")*
@@ -445,7 +459,7 @@ static Type *struct_decl() {
   for (Member *mem = ty->members; mem; mem = mem->next) {
     offset = align_to(offset, mem->ty->align);
     mem->offset = offset;
-    offset += mem->ty->size;
+    offset += size_of(mem->ty);
 
     if (ty->align < mem->ty->align)
       ty->align = mem->ty->align;
@@ -465,8 +479,8 @@ static Type *union_decl() {
   for (Member *mem = ty->members; mem; mem = mem->next) {
     if (ty->align < mem->ty->align)
       ty->align = mem->ty->align;
-    if (ty->size< mem->ty->size)
-      ty->size = mem->ty->size;
+    if (ty->size < size_of(mem->ty))
+      ty->size = size_of(mem->ty);
   }
   ty->size = align_to(ty->size, ty->align);
 
@@ -837,7 +851,7 @@ static Node *primary() {
   if (consume("sizeof")) {
     Node *node = unary();
     generate_type(node);
-    return new_node_num(node->ty->size, start);
+    return new_node_num(size_of(node->ty), start);
   }
 
   if (token->kind == TK_STR) {

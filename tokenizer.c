@@ -150,6 +150,7 @@ static bool is_keyword(Token *tok) {
     "short",
     "int",
     "long",
+    "void",
 
     "struct",
     "union",

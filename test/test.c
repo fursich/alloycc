@@ -56,6 +56,7 @@ int sub_long(long a, long b, long c) {
 }
 
 int main() {
+  { void *x; }
 
   assert(24, ({ int *x[3]; sizeof(x); }), "({ int *x[3]; sizeof(x); })");
   assert(8, ({ int (*x)[3]; sizeof(x); }), "({ int (*x)[3]; sizeof(x); })");
