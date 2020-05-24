@@ -12,6 +12,7 @@ static void store(Type *ty);
 
 static int labelseq = 1;
 static const char *argreg8[]  = { "dil", "sil", "dl", "cl", "r8b", "r9b" };
+static const char *argreg32[] = { "edi", "esi", "edx", "ecx", "e8", "e9" };
 static const char *argreg64[] = { "rdi", "rsi", "rdx", "rcx", "r8", "r9" };
 static Function  *current_fn;
 
@@ -59,6 +60,8 @@ static void load(Type *ty) {
 
   if (ty->size == 1)
     printf("  movsx rax, byte ptr [rax]\n");
+  else if (ty->size == 4)
+    printf("  movsxd rax, dword ptr [rax]\n");
   else
     printf("  mov rax, [rax]\n");
 
@@ -76,6 +79,8 @@ static void store(Type *ty) {
     }
   } else if (ty->size == 1) {
     printf("  mov [rdi], sil\n");
+  } else if (ty->size == 4) {
+    printf("  mov [rdi], esi\n");
   } else {
     printf("  mov [rdi], rsi\n");
   }
@@ -105,6 +110,8 @@ static void store_args(Var *params) {
   for (Var *arg = params; arg; arg = arg->next) {
     if (arg->ty->size == 1)
       printf("  mov [rbp-%d], %s\n", arg->offset, argreg8[--i]);
+    else if (arg->ty->size == 4)
+      printf("  mov [rbp-%d], %s\n", arg->offset, argreg32[--i]);
     else
       printf("  mov [rbp-%d], %s\n", arg->offset, argreg64[--i]);
   }
