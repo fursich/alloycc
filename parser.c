@@ -265,6 +265,8 @@ Program *parse() {
 
     // function
     if (ty->kind == TY_FUNC) {
+      if (consume(";"))
+        continue;
       cur = cur->next = funcdef(ty);
       continue;
     }

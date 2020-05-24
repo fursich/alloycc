@@ -1,4 +1,8 @@
+/*
+ * test code for 9cc
+ */
 
+// test function
 int assert(int expected, int actual, char *code) {
   if (expected == actual) {
     printf("%s => %d\n", code, actual);
@@ -9,8 +13,14 @@ int assert(int expected, int actual, char *code) {
   return 0;
 }
 
+// global vars
 int g1, g2[4];
 
+// function declarations;
+int printf();
+int exit();
+
+// functions
 int echo_self(int i) {
   return i;
 }
