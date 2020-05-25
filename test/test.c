@@ -16,6 +16,9 @@ int assert(int expected, int actual, char *code) {
 // global vars
 int g1, g2[4];
 
+// typedef
+typedef int MyInt, MyInt2[4];
+
 // function declarations;
 int printf();
 int exit();
@@ -56,6 +59,15 @@ int sub_long(long a, long b, long c) {
 }
 
 int main() {
+
+  assert(1, ({ typedef int t; t x=1; x; }), "({ typedef int t; t x=1; x; })");
+  assert(1, ({ typedef struct {int a;} t; t x; x.a=1; x.a; }), "({ typedef struct {int a;} t; t x; x.a=1; x.a; })");
+  assert(1, ({ typedef int t; t t=1; t; }), "({ typedef int t; t t=1; t; })");
+  assert(2, ({ typedef struct {int a;} t; { typedef int t; } t x; x.a=2; x.a; }), "({ typedef struct {int a;} t; { typedef int t; } t x; x.a=2; x.a; })");
+  assert(4, ({ typedef t; t x; sizeof(x); }), "({ typedef t; t x; sizeof(x); })");
+  assert(4, ({ typedef typedef t; t x; sizeof(x); }), "({ typedef typedef t; t x; sizeof(x); })");
+  assert(3, ({ MyInt x=3; x; }), "({ MyInt x=3; x; })");
+  assert(16, ({ MyInt2 x; sizeof(x); }), "({ MyInt2 x; sizeof(x); })");
 
   assert(8, ({ long long x; sizeof(x); }), "({ long long x; sizeof(x); })");
   assert(8, ({ long long int x; sizeof(x); }), "({ long long x; sizeof(x); })");
