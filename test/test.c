@@ -57,6 +57,9 @@ int sub_long(long a, long b, long c) {
 
 int main() {
 
+  assert(8, ({ long long x; sizeof(x); }), "({ long long x; sizeof(x); })");
+  assert(8, ({ long long int x; sizeof(x); }), "({ long long x; sizeof(x); })");
+
   assert(1, ({ char x; sizeof(x); }), "({ char x; sizeof(x); })");
   assert(2, ({ short int x; sizeof(x); }), "({ short int x; sizeof(x); })");
   assert(2, ({ int short x; sizeof(x); }), "({ int short x; sizeof(x); })");
