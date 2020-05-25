@@ -8,9 +8,8 @@ int main(int argc, char **argv) {
     return 1;
   }
 
-  // TODO: user_input = argv[1];
-  token = tokenize_file(argv[1]);
-  Program *prog = parse();
+  Token *tok = tokenize_file(argv[1]);
+  Program *prog = parse(tok);
 
   for (Function *fn = prog->fns; fn; fn = fn->next) {
     int offset = 0;

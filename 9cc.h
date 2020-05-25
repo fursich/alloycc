@@ -148,7 +148,7 @@ struct Program {
   Var *globals;
 };
 
-Program *parse(void);
+Program *parse(Token *tok);
 
 //
 // codegen.c

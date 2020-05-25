@@ -241,46 +241,48 @@ static Node *new_node_sub(Node *lhs, Node *rhs, Token *tok) {
 }
 
 static bool is_typename(Token *tok);
-static Type *typespec(VarAttr *attr);
-static Type *declarator(Type *base);
-static Node *declaration(void);
+static Type *typespec(Token *tok, VarAttr *attr);
+static Type *declarator(Token *tok, Type *base);
+static Node *declaration(Token *tok);
 
-static Function *funcdef(Type *ty);
-static Type *func_params(void);
-static Type *struct_decl(void);
-static Type *union_decl(void);
+static Function *funcdef(Token *tok, Type *ty);
+static Type *func_params(Token *tok);
+static Type *struct_decl(Token *tok);
+static Type *union_decl(Token *tok);
 
-static Node *block_stmt(void);
-static Node *stmt(void);
+static Node *block_stmt(Token *tok);
+static Node *stmt(Token *tok);
 
-static Node *if_stmt(void);
-static Node *while_stmt(void);
-static Node *for_stmt(void);
-static Node *return_stmt(void);
-static Node *expr_stmt(void);
+static Node *if_stmt(Token *tok);
+static Node *while_stmt(Token *tok);
+static Node *for_stmt(Token *tok);
+static Node *return_stmt(Token *tok);
+static Node *expr_stmt(Token *tok);
 
-static Node *expr(void);
-static Node *assign(void);
-static Node *equality(void);
-static Node *relational(void);
-static Node *add(void);
-static Node *mul(void);
-static Node *unary(void);
-static Node *postfix(void);
-static Node *primary(void);
-static Node *func_or_var(void);
-static Node *arg_list(void);
+static Node *expr(Token *tok);
+static Node *assign(Token *tok);
+static Node *equality(Token *tok);
+static Node *relational(Token *tok);
+static Node *add(Token *tok);
+static Node *mul(Token *tok);
+static Node *unary(Token *tok);
+static Node *postfix(Token *tok);
+static Node *primary(Token *tok);
+static Node *func_or_var(Token *tok);
+static Node *arg_list(Token *tok);
 
 // program = (funcdef | global-var)*
-Program *parse() {
+Program *parse(Token *tok) {
+  token = tok;
+
   Function head = {0};
   Function *cur = &head;
   globals = NULL;
 
   while (!at_eof()) {
     VarAttr attr = {0};
-    Type *basety = typespec(&attr);
-    Type *ty = declarator(basety);
+    Type *basety = typespec(token, &attr);
+    Type *ty = declarator(token, basety);
 
     // typedef
     // "typedef" basety foo[3], *bar, ..
@@ -290,7 +292,7 @@ Program *parse() {
         if (consume(";"))
           break;
         expect(",");
-        ty = declarator(basety);
+        ty = declarator(token, basety);
       }
       continue;
     }
@@ -299,7 +301,7 @@ Program *parse() {
     if (ty->kind == TY_FUNC) {
       if (consume(";"))
         continue;
-      cur = cur->next = funcdef(ty);
+      cur = cur->next = funcdef(tok, ty);
       continue;
     }
 
@@ -309,7 +311,7 @@ Program *parse() {
       if (consume(";"))
         break;
       expect(",");
-      ty = declarator(basety);
+      ty = declarator(token, basety);
     }
   }
 
@@ -323,7 +325,7 @@ Program *parse() {
 // typespec = typename typename*
 // typename = "void" | "char" | "int" | "short" | "long" |
 //            "struct" struct_dec | "union" union-decll
-static Type *typespec(VarAttr *attr) {
+static Type *typespec(Token *tok, VarAttr *attr) {
 
   enum {
     VOID  = 1 << 0,
@@ -354,9 +356,9 @@ static Type *typespec(VarAttr *attr) {
         break;
 
       if (consume("struct")) {
-        ty = struct_decl();
+        ty = struct_decl(token);
       } else if (consume("union")) {
-        ty = union_decl();
+        ty = union_decl(token);
       } else {
         ty = ty2;
         expect_ident();
@@ -411,17 +413,17 @@ static Type *typespec(VarAttr *attr) {
 // type-suffix = "(" func-params ")"
 //             | "[" num "]" type-suffix
 //             | ε
-static Type *type_suffix(Type *ty) {
+static Type *type_suffix(Token *tok, Type *ty) {
   if (consume("(")) {
     ty = func_returning(ty);
-    ty->params = func_params();
+    ty->params = func_params(token);
     expect(")");
     return ty;
   }
   if (consume("[")) {
     int sz = expect_number();
     expect("]");
-    ty = type_suffix(ty);  // first, define rightmost sub-array's size
+    ty = type_suffix(token, ty);  // first, define rightmost sub-array's size
     ty = array_of(ty, sz); // this array composes of sz length of subarrays above
     return ty;
   }
@@ -430,41 +432,41 @@ static Type *type_suffix(Type *ty) {
 }
 
 // declarator = "*"* ("(" declarator ")" | ident) type-suffix
-static Type *declarator(Type *ty) {
+static Type *declarator(Token *tok, Type *ty) {
   while (consume("*"))
     ty = pointer_to(ty);
 
   if (consume("(")) {
     Type *placeholder = calloc(1, sizeof(Type));
-    Type *new_ty = declarator(placeholder);
+    Type *new_ty = declarator(token, placeholder);
     expect(")");
-    *placeholder = *type_suffix(ty);
+    *placeholder = *type_suffix(token, ty);
     return new_ty;
   }
 
   Token *ident = token;
   expect_ident();
 
-  ty = type_suffix(ty);
+  ty = type_suffix(token, ty);
   ty->ident = ident;
   return ty;
 }
 
 // declaration = typespec (declarator ( = expr)? ( "," declarator ( = expr)? )* )? ";"
-static Node *declaration() {
+static Node *declaration(Token *tok) {
   Node head = {};
   Node *cur = &head;
   Token *start_decl = token;
 
   VarAttr attr = {0};
-  Type *basety = typespec(&attr);
+  Type *basety = typespec(token, &attr);
 
   while(!consume(";")) {
     if (cur != &head)
       expect(",");
 
     Token *start = token;
-    Type *ty = declarator(basety);
+    Type *ty = declarator(start, basety);
     if (ty->kind == TY_VOID)
       error_tok(start, "variable declared void");
 
@@ -477,7 +479,7 @@ static Node *declaration() {
 
     Node *node = new_node_var(var, token);
     if (consume("="))
-      node = new_node_binary(ND_ASSIGN, node, assign(), start);
+      node = new_node_binary(ND_ASSIGN, node, assign(token), start);
 
     cur = cur->next = new_node_unary(ND_EXPR_STMT, node, start);
   }
@@ -503,19 +505,19 @@ static bool is_typename(Token *tok) {
 }
 
 // struct-union-members = (typespec declarator ("," declarator)* ";")*
-static Member *struct_union_members() {
+static Member *struct_union_members(Token *tok) {
   Member head = {0};
   Member *cur = &head;
 
   while (!equal(token, "}")) {
-    Type *basety = typespec(NULL);
+    Type *basety = typespec(token, NULL);
     int cnt = 0;
 
     while (!consume(";")) {
       if (cnt++)
         expect(",");
 
-      Type *ty = declarator(basety);
+      Type *ty = declarator(token, basety);
       Member *mem = new_member(get_identifier(ty->ident), ty);
       cur = cur->next = mem;
     }
@@ -525,7 +527,7 @@ static Member *struct_union_members() {
 }
 
 // struct-union-decl = ident? ("{" struct-union-members "}"
-static Type *struct_union_decl() {
+static Type *struct_union_decl(Token *tok) {
   // Read the tag (if any)
   char *tag_name = NULL;
   Token *start = token;
@@ -542,7 +544,7 @@ static Type *struct_union_decl() {
 
   expect("{");
   Type *ty = new_type(TY_STRUCT, 0, 0);
-  ty->members = struct_union_members();
+  ty->members = struct_union_members(token);
   expect("}");
 
   // Register the struct type if name is given
@@ -553,8 +555,8 @@ static Type *struct_union_decl() {
 }
 
 // struct-decl = struct-union-decl
-static Type *struct_decl() {
-  Type *ty = struct_union_decl();
+static Type *struct_decl(Token *tok) {
+  Type *ty = struct_union_decl(token);
 
   int offset = 0;
   for (Member *mem = ty->members; mem; mem = mem->next) {
@@ -571,8 +573,8 @@ static Type *struct_decl() {
 }
 
 // union-decl = struct-union-decl
-static Type *union_decl() {
-  Type *ty = struct_union_decl();
+static Type *union_decl(Token *tok) {
+  Type *ty = struct_union_decl(token);
 
   // for union, all the offsets has to stay zero, meaning we
   // just need to leave these values unchanged after initialization.
@@ -590,7 +592,7 @@ static Type *union_decl() {
 
 // funcdef = { block_stmt }
 // TODO: consider poiter-type
-static Function *funcdef(Type *ty) {
+static Function *funcdef(Token *tok, Type *ty) {
   locals = NULL;
 
   Function *func = new_function(ty);
@@ -602,7 +604,7 @@ static Function *funcdef(Type *ty) {
 
   func->params = locals;
 
-  func->node = block_stmt();
+  func->node = block_stmt(tok);
   func->locals = locals;
 
   leave_scope();
@@ -611,7 +613,7 @@ static Function *funcdef(Type *ty) {
 
 // func-params = param, ("," param)*
 // param = typespec declarator
-static Type *func_params() {
+static Type *func_params(Token *tok) {
   Type head = {0};
   Type *cur = &head;
 
@@ -619,9 +621,9 @@ static Type *func_params() {
     if (cur != &head)
       expect(",");
 
-    Token *start = token;
-    Type *basety = typespec(NULL);
-    Type *ty = declarator(basety);
+    Token *start = tok;
+    Type *basety = typespec(token, NULL);
+    Type *ty = declarator(token, basety);
     cur = cur->next = copy_ty(ty);
   }
 
@@ -630,7 +632,7 @@ static Type *func_params() {
 
 // block_stmt = stmt*
 // TODO: allow blocks to have their own local vars
-static Node *block_stmt() {
+static Node *block_stmt(Token *tok) {
   Node head = {};
   Node *cur = &head;
   Token *start = token;
@@ -640,9 +642,9 @@ static Node *block_stmt() {
   expect("{");
   while (!consume("}")) {
     if (is_typename(token))
-      cur = cur->next = declaration();
+      cur = cur->next = declaration(token);
     else
-      cur = cur->next = stmt();
+      cur = cur->next = stmt(token);
 
     generate_type(cur);
   }
@@ -656,71 +658,71 @@ static Node *block_stmt() {
 }
 
 // stmt = if_stmt | return_stmt | { block_stmt } | expr_stmt
-static Node *stmt() {
+static Node *stmt(Token *tok) {
   Node *node;
 
   if (equal(token, "if")) {
-    node = if_stmt();
+    node = if_stmt(token);
     return node;
   }
 
   if (equal(token, "while")) {
-    node = while_stmt();
+    node = while_stmt(token);
     return node;
   }
 
   if (equal(token, "for")) {
-    node = for_stmt();
+    node = for_stmt(token);
     return node;
   }
 
   if (equal(token, "return")) {
-    node = return_stmt();
+    node = return_stmt(token);
     return node;
   }
 
   if (equal(token, "{")) {
-    node = block_stmt();
+    node = block_stmt(token);
     return node;
   }
 
-  node = expr_stmt();
+  node = expr_stmt(token);
   return node;
 }
 
 // if_stmt = "if" (cond) then_stmt ("else" els_stmt)
-static Node *if_stmt() {
+static Node *if_stmt(Token *tok) {
   Node *node;
   Token *start = token;
 
   expect("if");
   node = new_node(ND_IF, start);
   expect("(");
-  node->cond = expr();
+  node->cond = expr(token);
   expect(")");
-  node->then = stmt();
+  node->then = stmt(token);
   if (consume("else"))
-    node->els = stmt();
+    node->els = stmt(token);
   return node;
 }
 
 // while_stmt = "while" (cond) then_stmt
-static Node *while_stmt() {
+static Node *while_stmt(Token *tok) {
   Node *node;
   Token *start = token;
 
   expect("while");
   node = new_node(ND_FOR, start);
   expect("(");
-  node->cond = expr();
+  node->cond = expr(token);
   expect(")");
-  node->then = stmt();
+  node->then = stmt(token);
 
   return node;
 }
 
 // for_stmt = "for" ( init; cond; inc) then_stmt
-static Node *for_stmt() {
+static Node *for_stmt(Token *tok) {
   Node *node;
   Token *start = token;
 
@@ -728,125 +730,125 @@ static Node *for_stmt() {
   node = new_node(ND_FOR, start);
   expect("(");
   if(!consume(";")) {
-    node->init = new_node_unary(ND_EXPR_STMT, expr(), token);
+    node->init = new_node_unary(ND_EXPR_STMT, expr(token), token);
     expect(";");
   }
   if(!consume(";")) {
-    node->cond = expr();
+    node->cond = expr(token);
     expect(";");
   }
   if(!consume(")")) {
-    node->inc = new_node_unary(ND_EXPR_STMT, expr(), token);
+    node->inc = new_node_unary(ND_EXPR_STMT, expr(token), token);
     expect(")");
   }
-  node->then = stmt();
+  node->then = stmt(token);
 
   return node;
 }
 
 // return_stmt = "return" expr
-static Node *return_stmt() {
+static Node *return_stmt(Token *tok) {
   Node *node;
   Token *start = token;
 
   expect("return");
-  node = new_node_unary(ND_RETURN, expr(), start);
+  node = new_node_unary(ND_RETURN, expr(token), start);
   expect(";");
   return node;
 }
 
 // expr_stmt
-static Node *expr_stmt() {
+static Node *expr_stmt(Token *tok) {
   Node *node;
   Token *start = token;
 
-  node = new_node_unary(ND_EXPR_STMT, expr(), start);
+  node = new_node_unary(ND_EXPR_STMT, expr(token), start);
   expect(";");
   return node;
 }
 
 // expr = assign ( "," expr )?
-static Node *expr() {
-  Node *node = assign();
+static Node *expr(Token *tok) {
+  Node *node = assign(token);
 
   // supporting "generized lvalue" supported by past GCC (already deprecated)
   // implemeted for convenient use
   if (consume(","))
-    node = new_node_binary(ND_COMMA, node, expr(), token);
+    node = new_node_binary(ND_COMMA, node, expr(token), token);
 
   return node;
 }
 
 // assign = equality ("=" assign)?
-static Node *assign() {
-  Node *node = equality();
+static Node *assign(Token *tok) {
+  Node *node = equality(token);
   Token *start = token;
 
   if (consume("="))
-    node = new_node_binary(ND_ASSIGN, node, assign(), start);
+    node = new_node_binary(ND_ASSIGN, node, assign(token), start);
 
   return node;
 }
 
 // equality = relational ('==' relational | '!=' relational)*
-static Node *equality() {
-  Node *node = relational();
+static Node *equality(Token *tok) {
+  Node *node = relational(token);
   Token *start = token;
 
   for(;;) {
     if (consume("=="))
-      node = new_node_binary(ND_EQ, node, relational(), start);
+      node = new_node_binary(ND_EQ, node, relational(token), start);
     else if (consume("!="))
-      node = new_node_binary(ND_NE, node, relational(), start);
+      node = new_node_binary(ND_NE, node, relational(token), start);
     else
       return node;
   }
 }
 
 // relational = add ("<" add | "<=" add | ">" add | ">=" add)*
-static Node *relational() {
-  Node *node = add();
+static Node *relational(Token *tok) {
+  Node *node = add(token);
   Token *start = token;
 
   for(;;) {
     if (consume("<"))
-      node = new_node_binary(ND_LT, node, add(), start);
+      node = new_node_binary(ND_LT, node, add(token), start);
     else if (consume("<="))
-      node = new_node_binary(ND_LE, node, add(), start);
+      node = new_node_binary(ND_LE, node, add(token), start);
     else if (consume(">"))
-      node = new_node_binary(ND_LT, add(), node, start);
+      node = new_node_binary(ND_LT, add(token), node, start);
     else if (consume(">="))
-      node = new_node_binary(ND_LE, add(), node, start);
+      node = new_node_binary(ND_LE, add(token), node, start);
     else
       return node;
   }
 }
 
 // add = mul ("+" mul | "-" mul)*
-static Node *add() {
-  Node *node = mul();
+static Node *add(Token *tok) {
+  Node *node = mul(token);
   Token *start = token;
 
   for(;;) {
     if (consume("+"))
-      node = new_node_add(node, mul(), start);
+      node = new_node_add(node, mul(token), start);
     else if (consume("-"))
-      node = new_node_sub(node, mul(), start);
+      node = new_node_sub(node, mul(token), start);
     else
       return node;
   }
 }
 
 // mul = unary ("*" unary | "/" unary)*
-static Node *mul() {
-  Node *node = unary();
+static Node *mul(Token *tok) {
+  Node *node = unary(token);
   Token *start = token;
 
   for(;;) {
     if (consume("*"))
-      node = new_node_binary(ND_MUL, node, unary(), start);
+      node = new_node_binary(ND_MUL, node, unary(token), start);
     else if (consume("/"))
-      node = new_node_binary(ND_DIV, node, unary(), start);
+      node = new_node_binary(ND_DIV, node, unary(token), start);
     else
       return node;
   }
@@ -854,18 +856,18 @@ static Node *mul() {
 
 // unary = ("+" | "-" | "*" | "&")? unary
 //       | postfix
-static Node *unary() {
+static Node *unary(Token *tok) {
   Token *start = token;
 
   if (consume("+"))
-    return unary();
+    return unary(token);
   if (consume("-"))
-    return new_node_binary(ND_SUB, new_node_num(0, start), unary(), start);
+    return new_node_binary(ND_SUB, new_node_num(0, start), unary(token), start);
   if (consume("&"))
-    return new_node_unary(ND_ADDR, unary(), start);
+    return new_node_unary(ND_ADDR, unary(token), start);
   if (consume("*"))
-    return new_node_unary(ND_DEREF, unary(), start);
-  return postfix();
+    return new_node_unary(ND_DEREF, unary(token), start);
+  return postfix(token);
 }
 
 static Member *get_struct_member(Type *ty, Token *tok) {
@@ -875,7 +877,7 @@ static Member *get_struct_member(Type *ty, Token *tok) {
   error_tok(tok, "no such member");
 }
 
-static Node *struct_ref(Node *lhs, Token *tok) {
+static Node *struct_ref(Token *tok, Node *lhs) {
   generate_type(lhs);
   if (lhs->ty->kind != TY_STRUCT)
     error_tok(lhs->token, "not a struct");
@@ -886,28 +888,28 @@ static Node *struct_ref(Node *lhs, Token *tok) {
 }
 
 // postfix = primary ("[" expr "]" | "." ident | "->" ident)*
-static Node *postfix() {
+static Node *postfix(Token *tok) {
   Token *start = token;
-  Node *node = primary();
+  Node *node = primary(token);
 
   for (;;) {
     if (consume("["))  {
       // x[y] is syntax sugar for *(x + y)
-      Node *idx = expr();
+      Node *idx = expr(token);
       expect("]");
       node = new_node_unary(ND_DEREF, new_node_add(node, idx, start), start);
       continue;
     }
 
     if (consume(".")) {
-      node = struct_ref(node, token);
+      node = struct_ref(token, node);
       expect_ident();
       continue;
     }
 
     if (consume("->")) {
       node = new_node_unary(ND_DEREF, node, start);
-      node = struct_ref(node, token);
+      node = struct_ref(token, node);
       expect_ident();
       continue;
     }
@@ -922,13 +924,13 @@ static Node *postfix() {
 //           | func_or_var
 //           | str
 //           | num
-static Node *primary() {
+static Node *primary(Token *tok) {
   Token *start = token;
 
   if (consume("(")) {
     if (equal(token, "{")) {
       Node *node = new_node(ND_STMT_EXPR, start);
-      node->body = block_stmt()->body;
+      node->body = block_stmt(token)->body;
       expect(")");
 
       Node *cur = node->body;
@@ -940,17 +942,17 @@ static Node *primary() {
       return node;
     }
 
-    Node *node = expr();
+    Node *node = expr(token);
     expect(")");
     return node;
   }
 
   if (token->kind == TK_IDENT) {
-    return func_or_var();
+    return func_or_var(token);
   }
 
   if (consume("sizeof")) {
-    Node *node = unary();
+    Node *node = unary(token);
     generate_type(node);
     return new_node_num(size_of(node->ty), start);
   }
@@ -965,14 +967,14 @@ static Node *primary() {
 }
 
 // func_or_var = func(arg_list) | var
-static Node *func_or_var() {
+static Node *func_or_var(Token *tok) {
   Token *start = token;
   char *name = expect_ident();
 
   if (consume("(")) {
     Node *node = new_node(ND_FUNCALL, start);
     node->funcname = name;
-    node->args = arg_list();
+    node->args = arg_list(token);
     expect(")");
     return node;
   }
@@ -985,14 +987,14 @@ static Node *func_or_var() {
 }
 
 // arg_list = (assign (, assign)*)?
-static Node *arg_list() {
+static Node *arg_list(Token *tok) {
   Node head = {0};
   Node *cur = &head;
 
   while (!equal(token, ")")) {
     if (cur != &head)
       expect(",");
-    cur = cur->next = assign();
+    cur = cur->next = assign(token);
   }
 
   return head.next;
