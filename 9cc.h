@@ -41,7 +41,7 @@ struct Token {
 void error(char *fmt, ...);
 void error_at(char *loc, char *fmt, ...);
 void error_tok(Token *tok, char *fmt, ...);
-bool equal(char *op);
+bool equal(Token *tok, char *op);
 void skip(char *op);
 bool consume(char *op);
 void expect(char *op);

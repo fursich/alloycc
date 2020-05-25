@@ -240,7 +240,7 @@ static Node *new_node_sub(Node *lhs, Node *rhs, Token *tok) {
   error_tok(tok, "invalid operands");
 }
 
-static bool is_typename(void);
+static bool is_typename(Token *tok);
 static Type *typespec(VarAttr *attr);
 static Type *declarator(Type *base);
 static Node *declaration(void);
@@ -337,9 +337,9 @@ static Type *typespec(VarAttr *attr) {
   Type *ty = ty_int;
   int counter = 0;
 
-  while (is_typename()) {
+  while (is_typename(token)) {
     // Handle "typedef" keyword
-    if (equal("typedef")) {
+    if (equal(token, "typedef")) {
       if (!attr)
         error_tok(token, "storage class specifier is not allowed in this context");
       attr->is_typedef = true;
@@ -349,7 +349,7 @@ static Type *typespec(VarAttr *attr) {
 
     // Handle user-defined tyees
     Type *ty2 = lookup_typedef(token);
-    if (equal("struct") || equal("union") || ty2) {
+    if (equal(token, "struct") || equal(token, "union") || ty2) {
       if (counter)
         break;
 
@@ -489,17 +489,17 @@ static Node *declaration() {
 }
 
 // whether given token reprents a type
-static bool is_typename() {
+static bool is_typename(Token *tok) {
   static char *kw[] = {
     "void", "char", "short", "int", "long", "struct", "union",
     "typedef",
   };
 
   for (int i = 0; i < sizeof(kw) / sizeof(*kw); i++)
-    if (equal(kw[i]))
+    if (equal(tok, kw[i]))
       return true;
 
-  return lookup_typedef(token);
+  return lookup_typedef(tok);
 }
 
 // struct-union-members = (typespec declarator ("," declarator)* ";")*
@@ -507,7 +507,7 @@ static Member *struct_union_members() {
   Member head = {0};
   Member *cur = &head;
 
-  while (!equal("}")) {
+  while (!equal(token, "}")) {
     Type *basety = typespec(NULL);
     int cnt = 0;
 
@@ -533,7 +533,7 @@ static Type *struct_union_decl() {
   if (token->kind == TK_IDENT)
     tag_name = expect_ident();
 
-  if (tag_name && !equal("{")) {
+  if (tag_name && !equal(token, "{")) {
     Type *ty = lookup_tag(tag_name);
     if (!ty)
       error_tok(start, "unknown struct type");
@@ -615,7 +615,7 @@ static Type *func_params() {
   Type head = {0};
   Type *cur = &head;
 
-  while (!equal(")")) {
+  while (!equal(token, ")")) {
     if (cur != &head)
       expect(",");
 
@@ -639,7 +639,7 @@ static Node *block_stmt() {
 
   expect("{");
   while (!consume("}")) {
-    if (is_typename())
+    if (is_typename(token))
       cur = cur->next = declaration();
     else
       cur = cur->next = stmt();
@@ -659,27 +659,27 @@ static Node *block_stmt() {
 static Node *stmt() {
   Node *node;
 
-  if (equal("if")) {
+  if (equal(token, "if")) {
     node = if_stmt();
     return node;
   }
 
-  if (equal("while")) {
+  if (equal(token, "while")) {
     node = while_stmt();
     return node;
   }
 
-  if (equal("for")) {
+  if (equal(token, "for")) {
     node = for_stmt();
     return node;
   }
 
-  if (equal("return")) {
+  if (equal(token, "return")) {
     node = return_stmt();
     return node;
   }
 
-  if (equal("{")) {
+  if (equal(token, "{")) {
     node = block_stmt();
     return node;
   }
@@ -926,7 +926,7 @@ static Node *primary() {
   Token *start = token;
 
   if (consume("(")) {
-    if (equal("{")) {
+    if (equal(token, "{")) {
       Node *node = new_node(ND_STMT_EXPR, start);
       node->body = block_stmt()->body;
       expect(")");
@@ -989,7 +989,7 @@ static Node *arg_list() {
   Node head = {0};
   Node *cur = &head;
 
-  while (!equal(")")) {
+  while (!equal(token, ")")) {
     if (cur != &head)
       expect(",");
     cur = cur->next = assign();

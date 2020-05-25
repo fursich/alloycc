@@ -62,13 +62,13 @@ void error_tok(Token *tok, char *fmt, ...) {
 }
 
 /* compare token name (str) without consuming it (no checks are done against its kind) */
-bool equal(char *op) {
-  return strlen(op) == token->len && !strncmp(token->str, op, token->len);
+bool equal(Token *tok, char *op) {
+  return strlen(op) == tok->len && !strncmp(tok->str, op, tok->len);
 }
 
 /* consume token if its name (str) equals to the given *op (no checks against its kind) */
 bool consume(char *op) {
-  if (equal(op)) {
+  if (equal(token, op)) {
     token = token->next;
     return true;
   }
@@ -77,7 +77,7 @@ bool consume(char *op) {
 
 /* assert token name (str) equals to *op and consumes that token (no checks against its kind) */
 void expect(char *op) {
-  if (!equal(op))
+  if (!equal(token, op))
     error_at(token->str, "expected '%s'", op);
   token = token->next;
 }
