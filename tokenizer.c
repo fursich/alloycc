@@ -4,7 +4,6 @@
 // Tokenizer
 //
 
-Token *token;
 char *current_filename;
 static char *current_input;
 
@@ -67,24 +66,26 @@ bool equal(Token *tok, char *op) {
 }
 
 /* consume token if its name (str) equals to the given *op (no checks against its kind) */
-bool consume(char *op) {
-  if (equal(token, op)) {
-    token = token->next;
+bool consume(Token **rest, Token *tok, char *op) {
+  if (equal(tok, op)) {
+    *rest = tok->next;
     return true;
   }
+  *rest = tok;
   return false;
 }
 
 /* assert token name (str) equals to *op and consumes that token (no checks against its kind) */
-void expect(char *op) {
-  if (!equal(token, op))
-    error_at(token->str, "expected '%s'", op);
-  token = token->next;
+Token *skip(Token **rest, Token *tok, char *op) {
+  if (!equal(tok, op))
+    error_at(tok->str, "expected '%s'", op);
+  *rest = tok->next;
+  return *rest;
 }
 
-char *expect_ident() {
-  char *name = get_identifier(token);
-  token = token->next;
+char *expect_ident(Token **rest, Token *tok) {
+  char *name = get_identifier(tok);
+  *rest = tok->next;
   return name;
 }
 
@@ -95,24 +96,20 @@ char *get_identifier(Token *tok) {
   return name;
 }
 
-char *expect_string() {
-  if (token->kind != TK_STR)
-    error_at(token->str, "expected a string");
-  char *s = token->str;
-  token = token->next;
+char *expect_string(Token **rest, Token *tok) {
+  if (tok->kind != TK_STR)
+    error_at(tok->str, "expected a string");
+  char *s = tok->str;
+  *rest = tok->next;
   return s;
 }
 
-int expect_number() {
-  if (token->kind != TK_NUM)
-    error_at(token->str, "expected a number");
-  int val = token->val;
-  token = token->next;
+int expect_number(Token **rest, Token *tok) {
+  if (tok->kind != TK_NUM)
+    error_at(tok->str, "expected a number");
+  int val = tok->val;
+  *rest = tok->next;
   return val;
-}
-
-bool at_eof() {
-  return token->kind == TK_EOF;
 }
 
 static Token *new_token(TokenKind kind, Token *cur, char *str, int len) {

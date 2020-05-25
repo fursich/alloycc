@@ -42,17 +42,15 @@ void error(char *fmt, ...);
 void error_at(char *loc, char *fmt, ...);
 void error_tok(Token *tok, char *fmt, ...);
 bool equal(Token *tok, char *op);
-void skip(char *op);
-bool consume(char *op);
-void expect(char *op);
-char *expect_ident(void);
-char *get_identifier(Token *tok);
-char *expect_string(void);
-int expect_number(void);
-bool at_eof(void);
-Token *tokenize_file(char *path);
+bool consume(Token **rest, Token *tok, char *op);
+Token *skip(Token **rest, Token *tok, char *op);
 
-extern Token *token;
+char *expect_ident(Token **rest, Token *tok);
+char *get_identifier(Token *tok);
+char *expect_string(Token **rest, Token *tok);
+int expect_number(Token **rest, Token *tok);
+
+Token *tokenize_file(char *path);
 extern char *current_filename;
 
 //
