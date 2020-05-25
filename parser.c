@@ -222,6 +222,7 @@ static Node *new_node_sub(Node *lhs, Node *rhs, Token *tok) {
   error_tok(tok, "invalid operands");
 }
 
+static bool is_typename(void);
 static Type *typespec(void);
 static Type *declarator(Type *base);
 static Node *declaration(void);
@@ -287,31 +288,75 @@ Program *parse() {
   return prog;
 }
 
-// typespec = "void" | "char" | "int" | "short" | "long" |
+// typespec = typename typename*
+// typename = "void" | "char" | "int" | "short" | "long" |
 //            "struct" struct_dec | "union" union-decll
 static Type *typespec() {
-  if (consume("void"))
-    return ty_void;
 
-  if (consume("char"))
-    return ty_char;
+  enum {
+    VOID  = 1 << 0,
+    CHAR  = 1 << 2,
+    SHORT = 1 << 4,
+    INT   = 1 << 6,
+    LONG  = 1 << 8,
+    OTHER = 1 << 10,
+  };
 
-  if (consume("short"))
-    return ty_short;
+  Type *ty = ty_int;
+  int counter = 0;
 
-  if (consume("int"))
-    return ty_int;
+  while (is_typename()) {
+    // Handle user-defined tyees
+    if (equal("struct") || equal("union")) {
+      if (consume("struct"))
+        ty = struct_decl();
+      else if (consume("union"))
+        ty = union_decl();
+      else
+        error_tok(token, "internal error");
 
-  if (consume("long"))
-    return ty_long;
+      counter += OTHER;
+      continue;
+    }
 
-  if (consume("struct"))
-    return struct_decl();
+    // Handle built-in types.
+    if (consume("void"))
+      counter += VOID;
+    else if (consume("char"))
+      counter += CHAR;
+    else if (consume("short"))
+      counter += SHORT;
+    else if (consume("int"))
+      counter += INT;
+    else if (consume("long"))
+      counter += LONG;
+    else
+      error_tok(token, "internal error");
 
-  if (consume("union"))
-    return union_decl();
+    switch (counter) {
+    case VOID:
+      ty = ty_void;
+      break;
+    case CHAR:
+      ty = ty_char;
+      break;
+    case SHORT:
+    case SHORT + INT:
+      ty = ty_short;
+      break;
+    case INT:
+      ty = ty_int;
+      break;
+    case LONG:
+    case LONG + INT:
+      ty = ty_long;
+      break;
+    default:
+      error_tok(token, "invalid type");
+    }
+  }
 
-  error_tok(token, "typename expected");
+  return ty;
 }
 
 // type-suffix = "(" func-params ")"
