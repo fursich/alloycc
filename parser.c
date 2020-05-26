@@ -28,7 +28,6 @@ struct TagScope {
   Type *ty;
 };
 
-static Token *token;
 Var *locals;
 Var *globals;
 
@@ -274,46 +273,45 @@ static Node *arg_list(Token **rest, Token *tok);
 
 // program = (funcdef | global-var)*
 Program *parse(Token *tok) {
-  token = tok;
 
   Function head = {0};
   Function *cur = &head;
   globals = NULL;
 
-  while (token->kind != TK_EOF) {
-    Token *start = token;
+  while (tok->kind != TK_EOF) {
+    Token *start = tok;
     VarAttr attr = {0};
-    Type *basety = typespec(&token, token, &attr);
-    Type *ty = declarator(&token, token, basety);
+    Type *basety = typespec(&tok, tok, &attr);
+    Type *ty = declarator(&tok, tok, basety);
 
     // typedef
     // "typedef" basety foo[3], *bar, ..
     if (attr.is_typedef) {
       for(;;) {
         push_scope(get_identifier(ty->ident))->type_def =ty;
-        if (consume(&token, token, ";"))
+        if (consume(&tok, tok, ";"))
           break;
-        token =  skip(token, ",");
-        ty = declarator(&token, token, basety);
+        tok =  skip(tok, ",");
+        ty = declarator(&tok, tok, basety);
       }
       continue;
     }
 
     // function
     if (ty->kind == TY_FUNC) {
-      if (consume(&token, token, ";"))
+      if (consume(&tok, tok, ";"))
         continue;
-      cur = cur->next = funcdef(&token, token, ty);
+      cur = cur->next = funcdef(&tok, tok, ty);
       continue;
     }
 
     // global variable = typespec declarator ("," declarator)* ";"
     for (;;) {
       new_gvar(get_identifier(ty->ident), ty);
-      if (consume(&token, token, ";"))
+      if (consume(&tok, tok, ";"))
         break;
-      token =  skip(token, ",");
-      ty = declarator(&token, token, basety);
+      tok =  skip(tok, ",");
+      ty = declarator(&tok, tok, basety);
     }
   }
 
