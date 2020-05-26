@@ -134,7 +134,7 @@ static VarScope *lookup_var(char *name) {
 
 static Type *lookup_typedef(Token *tok) {
   if (tok->kind == TK_IDENT) {
-    VarScope *sc = lookup_var(get_identifier(token));
+    VarScope *sc = lookup_var(get_identifier(tok));
     if (sc)
       return sc->type_def;
   }
@@ -164,27 +164,27 @@ static Var *new_string_literal(char *s, int len) {
   return var;
 }
 
-static Node *new_node_unary(NodeKind kind, Node *lhs, Token *token) {
-  Node *node = new_node(kind, token);
+static Node *new_node_unary(NodeKind kind, Node *lhs, Token *tok) {
+  Node *node = new_node(kind, tok);
   node->lhs = lhs;
   return node;
 }
 
-static Node *new_node_binary(NodeKind kind, Node *lhs, Node *rhs, Token *token) {
-  Node *node = new_node(kind, token);
+static Node *new_node_binary(NodeKind kind, Node *lhs, Node *rhs, Token *tok) {
+  Node *node = new_node(kind, tok);
   node->lhs = lhs;
   node->rhs = rhs;
   return node;
 }
 
-static Node *new_node_var(Var *var, Token *token) {
-  Node *node = new_node(ND_VAR, token);
+static Node *new_node_var(Var *var, Token *tok) {
+  Node *node = new_node(ND_VAR, tok);
   node->var = var;
   return node;
 }
 
-static Node *new_node_num(int val, Token *token) {
-  Node *node = new_node(ND_NUM, token);
+static Node *new_node_num(int val, Token *tok) {
+  Node *node = new_node(ND_NUM, tok);
   node->val = val;
   return node;
 }
@@ -281,6 +281,7 @@ Program *parse(Token *tok) {
   globals = NULL;
 
   while (token->kind != TK_EOF) {
+    Token *start = token;
     VarAttr attr = {0};
     Type *basety = typespec(&token, token, &attr);
     Type *ty = declarator(&token, token, basety);
@@ -292,7 +293,7 @@ Program *parse(Token *tok) {
         push_scope(get_identifier(ty->ident))->type_def =ty;
         if (consume(&token, token, ";"))
           break;
-        skip(&token, token, ",");
+        token =  skip(token, ",");
         ty = declarator(&token, token, basety);
       }
       continue;
@@ -302,7 +303,7 @@ Program *parse(Token *tok) {
     if (ty->kind == TY_FUNC) {
       if (consume(&token, token, ";"))
         continue;
-      cur = cur->next = funcdef(&tok, tok, ty);
+      cur = cur->next = funcdef(&token, token, ty);
       continue;
     }
 
@@ -311,7 +312,7 @@ Program *parse(Token *tok) {
       new_gvar(get_identifier(ty->ident), ty);
       if (consume(&token, token, ";"))
         break;
-      skip(&token, token, ",");
+      token =  skip(token, ",");
       ty = declarator(&token, token, basety);
     }
   }
@@ -346,7 +347,7 @@ static Type *typespec(Token **rest, Token *tok, VarAttr *attr) {
       if (!attr)
         error_tok(token, "storage class specifier is not allowed in this context");
       attr->is_typedef = true;
-      skip(&token, token, "typedef");
+      token =  skip(token, "typedef");
       continue;
     }
 
@@ -418,12 +419,12 @@ static Type *type_suffix(Token **rest, Token *tok, Type *ty) {
   if (consume(&token, token, "(")) {
     ty = func_returning(ty);
     ty->params = func_params(&token, token);
-    skip(&token, token, ")");
+    token =  skip(token, ")");
     return ty;
   }
   if (consume(&token, token, "[")) {
     int sz = expect_number(&token, token);
-    skip(&token, token, "]");
+    token =  skip(token, "]");
     ty = type_suffix(&token, token, ty);  // first, define rightmost sub-array's size
     ty = array_of(ty, sz); // this array composes of sz length of subarrays above
     return ty;
@@ -440,7 +441,7 @@ static Type *declarator(Token **rest, Token *tok, Type *ty) {
   if (consume(&token, token, "(")) {
     Type *placeholder = calloc(1, sizeof(Type));
     Type *new_ty = declarator(&token, token, placeholder);
-    skip(&token, token, ")");
+    token =  skip(token, ")");
     *placeholder = *type_suffix(&token, token, ty);
     return new_ty;
   }
@@ -464,7 +465,7 @@ static Node *declaration(Token **rest, Token *tok) {
 
   while(!consume(&token, token, ";")) {
     if (cur != &head)
-      skip(&token, token, ",");
+      token =  skip(token, ",");
 
     Token *start = token;
     Type *ty = declarator(&start, start, basety);
@@ -516,7 +517,7 @@ static Member *struct_union_members(Token **rest, Token *tok) {
 
     while (!consume(&token, token, ";")) {
       if (cnt++)
-        skip(&token, token, ",");
+        token =  skip(token, ",");
 
       Type *ty = declarator(&token, token, basety);
       Member *mem = new_member(get_identifier(ty->ident), ty);
@@ -543,10 +544,10 @@ static Type *struct_union_decl(Token **rest, Token *tok) {
     return ty;
   }
 
-  skip(&token, token, "{");
+  token =  skip(token, "{");
   Type *ty = new_type(TY_STRUCT, 0, 0);
   ty->members = struct_union_members(&token, token);
-  skip(&token, token, "}");
+  token =  skip(token, "}");
 
   // Register the struct type if name is given
   if (tag_name)
@@ -620,7 +621,7 @@ static Type *func_params(Token **rest, Token *tok) {
 
   while (!equal(token, ")")) {
     if (cur != &head)
-      skip(&token, token, ",");
+      token =  skip(token, ",");
 
     Token *start = tok;
     Type *basety = typespec(&token, token, NULL);
@@ -640,7 +641,7 @@ static Node *block_stmt(Token **rest, Token *tok) {
 
   enter_scope();
 
-  skip(&token, token, "{");
+  token =  skip(token, "{");
   while (!consume(&token, token, "}")) {
     if (is_typename(token))
       cur = cur->next = declaration(&token, token);
@@ -696,11 +697,11 @@ static Node *if_stmt(Token **rest, Token *tok) {
   Node *node;
   Token *start = token;
 
-  skip(&token, token, "if");
+  token =  skip(token, "if");
   node = new_node(ND_IF, start);
-  skip(&token, token, "(");
+  token =  skip(token, "(");
   node->cond = expr(&token, token);
-  skip(&token, token, ")");
+  token =  skip(token, ")");
   node->then = stmt(&token, token);
   if (consume(&token, token, "else"))
     node->els = stmt(&token, token);
@@ -712,11 +713,11 @@ static Node *while_stmt(Token **rest, Token *tok) {
   Node *node;
   Token *start = token;
 
-  skip(&token, token, "while");
+  token =  skip(token, "while");
   node = new_node(ND_FOR, start);
-  skip(&token, token, "(");
+  token =  skip(token, "(");
   node->cond = expr(&token, token);
-  skip(&token, token, ")");
+  token =  skip(token, ")");
   node->then = stmt(&token, token);
 
   return node;
@@ -727,20 +728,20 @@ static Node *for_stmt(Token **rest, Token *tok) {
   Node *node;
   Token *start = token;
 
-  skip(&token, token, "for");
+  token =  skip(token, "for");
   node = new_node(ND_FOR, start);
-  skip(&token, token, "(");
+  token =  skip(token, "(");
   if(!consume(&token, token, ";")) {
     node->init = new_node_unary(ND_EXPR_STMT, expr(&token, token), token);
-    skip(&token, token, ";");
+    token =  skip(token, ";");
   }
   if(!consume(&token, token, ";")) {
     node->cond = expr(&token, token);
-    skip(&token, token, ";");
+    token =  skip(token, ";");
   }
   if(!consume(&token, token, ")")) {
     node->inc = new_node_unary(ND_EXPR_STMT, expr(&token, token), token);
-    skip(&token, token, ")");
+    token =  skip(token, ")");
   }
   node->then = stmt(&token, token);
 
@@ -752,9 +753,9 @@ static Node *return_stmt(Token **rest, Token *tok) {
   Node *node;
   Token *start = token;
 
-  skip(&token, token, "return");
+  token =  skip(token, "return");
   node = new_node_unary(ND_RETURN, expr(&token, token), start);
-  skip(&token, token, ";");
+  token =  skip(token, ";");
   return node;
 }
 
@@ -764,7 +765,7 @@ static Node *expr_stmt(Token **rest, Token *tok) {
   Token *start = token;
 
   node = new_node_unary(ND_EXPR_STMT, expr(&token, token), start);
-  skip(&token, token, ";");
+  token =  skip(token, ";");
   return node;
 }
 
@@ -897,7 +898,7 @@ static Node *postfix(Token **rest, Token *tok) {
     if (consume(&token, token, "["))  {
       // x[y] is syntax sugar for *(x + y)
       Node *idx = expr(&token, token);
-      skip(&token, token, "]");
+      token =  skip(token, "]");
       node = new_node_unary(ND_DEREF, new_node_add(node, idx, start), start);
       continue;
     }
@@ -932,7 +933,7 @@ static Node *primary(Token **rest, Token *tok) {
     if (equal(token, "{")) {
       Node *node = new_node(ND_STMT_EXPR, start);
       node->body = block_stmt(&token, token)->body;
-      skip(&token, token, ")");
+      token =  skip(token, ")");
 
       Node *cur = node->body;
       while(cur && cur->next)
@@ -944,7 +945,7 @@ static Node *primary(Token **rest, Token *tok) {
     }
 
     Node *node = expr(&token, token);
-    skip(&token, token, ")");
+    token =  skip(token, ")");
     return node;
   }
 
@@ -976,7 +977,7 @@ static Node *func_or_var(Token **rest, Token *tok) {
     Node *node = new_node(ND_FUNCALL, start);
     node->funcname = name;
     node->args = arg_list(&token, token);
-    skip(&token, token, ")");
+    token =  skip(token, ")");
     return node;
   }
 
@@ -994,7 +995,7 @@ static Node *arg_list(Token **rest, Token *tok) {
 
   while (!equal(token, ")")) {
     if (cur != &head)
-      skip(&token, token, ",");
+      token =  skip(token, ",");
     cur = cur->next = assign(&token, token);
   }
 

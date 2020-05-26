@@ -75,12 +75,11 @@ bool consume(Token **rest, Token *tok, char *op) {
   return false;
 }
 
-/* assert token name (str) equals to *op and consumes that token (no checks against its kind) */
-Token *skip(Token **rest, Token *tok, char *op) {
+/* assert token name (str) equals to *op (no checks against its kind) */
+Token *skip(Token *tok, char *op) {
   if (!equal(tok, op))
     error_at(tok->str, "expected '%s'", op);
-  *rest = tok->next;
-  return *rest;
+  return tok->next;
 }
 
 char *expect_ident(Token **rest, Token *tok) {

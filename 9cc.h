@@ -43,7 +43,7 @@ void error_at(char *loc, char *fmt, ...);
 void error_tok(Token *tok, char *fmt, ...);
 bool equal(Token *tok, char *op);
 bool consume(Token **rest, Token *tok, char *op);
-Token *skip(Token **rest, Token *tok, char *op);
+Token *skip(Token *tok, char *op);
 
 char *expect_ident(Token **rest, Token *tok);
 char *get_identifier(Token *tok);
