@@ -341,29 +341,29 @@ static Type *typespec(Token **rest, Token *tok, VarAttr *attr) {
   Type *ty = ty_int;
   int counter = 0;
 
-  while (is_typename(token)) {
+  while (is_typename(tok)) {
     // Handle "typedef" keyword
-    if (equal(token, "typedef")) {
+    if (equal(tok, "typedef")) {
       if (!attr)
-        error_tok(token, "storage class specifier is not allowed in this context");
+        error_tok(tok, "storage class specifier is not allowed in this context");
       attr->is_typedef = true;
-      token =  skip(token, "typedef");
+      tok =  skip(tok, "typedef");
       continue;
     }
 
     // Handle user-defined tyees
-    Type *ty2 = lookup_typedef(token);
-    if (equal(token, "struct") || equal(token, "union") || ty2) {
+    Type *ty2 = lookup_typedef(tok);
+    if (equal(tok, "struct") || equal(tok, "union") || ty2) {
       if (counter)
         break;
 
-      if (consume(&token, token, "struct")) {
-        ty = struct_decl(&token, token);
-      } else if (consume(&token, token, "union")) {
-        ty = union_decl(&token, token);
+      if (equal(tok, "struct")) {
+        ty = struct_decl(&tok, tok->next);
+      } else if (equal(tok, "union")) {
+        ty = union_decl(&tok, tok->next);
       } else {
         ty = ty2;
-        expect_ident(&token, token);
+        expect_ident(&tok, tok);
       }
 
       counter += OTHER;
@@ -371,18 +371,18 @@ static Type *typespec(Token **rest, Token *tok, VarAttr *attr) {
     }
 
     // Handle built-in types.
-    if (consume(&token, token, "void"))
+    if (equal(tok, "void"))
       counter += VOID;
-    else if (consume(&token, token, "char"))
+    else if (equal(tok, "char"))
       counter += CHAR;
-    else if (consume(&token, token, "short"))
+    else if (equal(tok, "short"))
       counter += SHORT;
-    else if (consume(&token, token, "int"))
+    else if (equal(tok, "int"))
       counter += INT;
-    else if (consume(&token, token, "long"))
+    else if (equal(tok, "long"))
       counter += LONG;
     else
-      error_tok(token, "internal error");
+      error_tok(tok, "internal error");
 
     switch (counter) {
     case VOID:
@@ -405,10 +405,13 @@ static Type *typespec(Token **rest, Token *tok, VarAttr *attr) {
       ty = ty_long;
       break;
     default:
-      error_tok(token, "invalid type");
+      error_tok(tok, "invalid type");
     }
+
+    tok = tok->next;
   }
 
+  *rest = tok;
   return ty;
 }
 
@@ -435,22 +438,29 @@ static Type *type_suffix(Token **rest, Token *tok, Type *ty) {
 
 // declarator = "*"* ("(" declarator ")" | ident) type-suffix
 static Type *declarator(Token **rest, Token *tok, Type *ty) {
-  while (consume(&token, token, "*"))
+  while (consume(&tok, tok, "*"))
     ty = pointer_to(ty);
 
-  if (consume(&token, token, "(")) {
+  if (consume(&tok, tok, "(")) {
     Type *placeholder = calloc(1, sizeof(Type));
-    Type *new_ty = declarator(&token, token, placeholder);
-    token =  skip(token, ")");
-    *placeholder = *type_suffix(&token, token, ty);
+    Type *new_ty = declarator(&tok, tok, placeholder);
+    tok =  skip(tok, ")");
+    token = tok; // FIXME
+    *placeholder = *type_suffix(&tok, tok, ty);
+    tok = token; // FIXME
+    *rest = tok;
     return new_ty;
   }
 
-  Token *ident = token;
-  expect_ident(&token, token);
+  Token *ident = tok;
+  expect_ident(&tok, tok);
 
-  ty = type_suffix(&token, token, ty);
+  token = tok; // FIXME
+  ty = type_suffix(&tok, tok, ty);
+  tok = token; // FIXME
   ty->ident = ident;
+
+  *rest = tok;
   return ty;
 }
 
@@ -511,20 +521,21 @@ static Member *struct_union_members(Token **rest, Token *tok) {
   Member head = {0};
   Member *cur = &head;
 
-  while (!equal(token, "}")) {
-    Type *basety = typespec(&token, token, NULL);
+  while (!equal(tok, "}")) {
+    Type *basety = typespec(&tok, tok, NULL);
     int cnt = 0;
 
-    while (!consume(&token, token, ";")) {
+    while (!consume(&tok, tok, ";")) {
       if (cnt++)
-        token =  skip(token, ",");
+        tok =  skip(tok, ",");
 
-      Type *ty = declarator(&token, token, basety);
+      Type *ty = declarator(&tok, tok, basety);
       Member *mem = new_member(get_identifier(ty->ident), ty);
       cur = cur->next = mem;
     }
   }
 
+  *rest = tok;
   return head.next;
 }
 
@@ -532,33 +543,35 @@ static Member *struct_union_members(Token **rest, Token *tok) {
 static Type *struct_union_decl(Token **rest, Token *tok) {
   // Read the tag (if any)
   char *tag_name = NULL;
-  Token *start = token;
+  Token *start = tok;
 
-  if (token->kind == TK_IDENT)
-    tag_name = expect_ident(&token, token);
+  if (tok->kind == TK_IDENT)
+    tag_name = expect_ident(&tok, tok);
 
-  if (tag_name && !equal(token, "{")) {
+  if (tag_name && !equal(tok, "{")) {
     Type *ty = lookup_tag(tag_name);
     if (!ty)
       error_tok(start, "unknown struct type");
+    *rest = tok;
     return ty;
   }
 
-  token =  skip(token, "{");
+  tok =  skip(tok, "{");
   Type *ty = new_type(TY_STRUCT, 0, 0);
-  ty->members = struct_union_members(&token, token);
-  token =  skip(token, "}");
+  ty->members = struct_union_members(&tok, tok);
+  tok =  skip(tok, "}");
 
   // Register the struct type if name is given
   if (tag_name)
     push_tag_scope(tag_name, ty);
 
+  *rest = tok;
   return ty;
 }
 
 // struct-decl = struct-union-decl
 static Type *struct_decl(Token **rest, Token *tok) {
-  Type *ty = struct_union_decl(&token, token);
+  Type *ty = struct_union_decl(rest, tok);
 
   int offset = 0;
   for (Member *mem = ty->members; mem; mem = mem->next) {
@@ -576,7 +589,7 @@ static Type *struct_decl(Token **rest, Token *tok) {
 
 // union-decl = struct-union-decl
 static Type *union_decl(Token **rest, Token *tok) {
-  Type *ty = struct_union_decl(&token, token);
+  Type *ty = struct_union_decl(rest, tok);
 
   // for union, all the offsets has to stay zero, meaning we
   // just need to leave these values unchanged after initialization.
