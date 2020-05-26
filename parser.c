@@ -489,11 +489,8 @@ static Node *declaration(Token **rest, Token *tok) {
     Var *var = new_lvar(get_identifier(ty->ident), ty);
 
     Node *node = new_node_var(var, tok);
-    if (consume(&tok, tok, "=")) {
-      token = tok; //FIXME
+    if (consume(&tok, tok, "="))
       node = new_node_binary(ND_ASSIGN, node, assign(&tok, tok), start);
-      tok = token; //FIXME
-    }
 
     cur = cur->next = new_node_unary(ND_EXPR_STMT, node, start);
   }
@@ -622,7 +619,7 @@ static Function *funcdef(Token **rest, Token *tok, Type *ty) {
 
   func->params = locals;
 
-  func->node = block_stmt(&tok, tok);
+  func->node = block_stmt(rest, tok);
   func->locals = locals;
 
   leave_scope();
@@ -654,16 +651,16 @@ static Type *func_params(Token **rest, Token *tok) {
 static Node *block_stmt(Token **rest, Token *tok) {
   Node head = {};
   Node *cur = &head;
-  Token *start = token;
+  Token *start = tok;
 
   enter_scope();
 
-  token =  skip(token, "{");
-  while (!consume(&token, token, "}")) {
-    if (is_typename(token))
-      cur = cur->next = declaration(&token, token);
+  tok =  skip(tok, "{");
+  while (!consume(&tok, tok, "}")) {
+    if (is_typename(tok))
+      cur = cur->next = declaration(&tok, tok);
     else
-      cur = cur->next = stmt(&token, token);
+      cur = cur->next = stmt(&tok, tok);
 
     generate_type(cur);
   }
@@ -673,6 +670,7 @@ static Node *block_stmt(Token **rest, Token *tok) {
   Node *node = new_node(ND_BLOCK, start);
   node->body = head.next;
 
+  *rest = tok;
   return node;
 }
 
@@ -680,213 +678,247 @@ static Node *block_stmt(Token **rest, Token *tok) {
 static Node *stmt(Token **rest, Token *tok) {
   Node *node;
 
-  if (equal(token, "if")) {
-    node = if_stmt(&token, token);
+  if (equal(tok, "if")) {
+    node = if_stmt(rest, tok);
     return node;
   }
 
-  if (equal(token, "while")) {
-    node = while_stmt(&token, token);
+  if (equal(tok, "while")) {
+    node = while_stmt(rest, tok);
     return node;
   }
 
-  if (equal(token, "for")) {
-    node = for_stmt(&token, token);
+  if (equal(tok, "for")) {
+    node = for_stmt(rest, tok);
     return node;
   }
 
-  if (equal(token, "return")) {
-    node = return_stmt(&token, token);
+  if (equal(tok, "return")) {
+    node = return_stmt(rest, tok);
     return node;
   }
 
-  if (equal(token, "{")) {
-    node = block_stmt(&token, token);
+  if (equal(tok, "{")) {
+    node = block_stmt(rest, tok);
     return node;
   }
 
-  node = expr_stmt(&token, token);
+  node = expr_stmt(rest, tok);
   return node;
 }
 
 // if_stmt = "if" (cond) then_stmt ("else" els_stmt)
 static Node *if_stmt(Token **rest, Token *tok) {
   Node *node;
-  Token *start = token;
+  Token *start = tok;
 
-  token =  skip(token, "if");
+  tok =  skip(tok, "if");
   node = new_node(ND_IF, start);
-  token =  skip(token, "(");
-  node->cond = expr(&token, token);
-  token =  skip(token, ")");
-  node->then = stmt(&token, token);
-  if (consume(&token, token, "else"))
-    node->els = stmt(&token, token);
+  tok =  skip(tok, "(");
+  node->cond = expr(&tok, tok);
+  tok =  skip(tok, ")");
+  node->then = stmt(&tok, tok);
+  if (consume(&tok, tok, "else"))
+    node->els = stmt(&tok, tok);
+
+  *rest = tok;
   return node;
 }
 
 // while_stmt = "while" (cond) then_stmt
 static Node *while_stmt(Token **rest, Token *tok) {
   Node *node;
-  Token *start = token;
+  Token *start = tok;
 
-  token =  skip(token, "while");
+  tok =  skip(tok, "while");
   node = new_node(ND_FOR, start);
-  token =  skip(token, "(");
-  node->cond = expr(&token, token);
-  token =  skip(token, ")");
-  node->then = stmt(&token, token);
+  tok =  skip(tok, "(");
+  node->cond = expr(&tok, tok);
+  tok =  skip(tok, ")");
+  node->then = stmt(&tok, tok);
 
+  *rest = tok;
   return node;
 }
 
 // for_stmt = "for" ( init; cond; inc) then_stmt
 static Node *for_stmt(Token **rest, Token *tok) {
   Node *node;
-  Token *start = token;
+  Token *start = tok;
 
-  token =  skip(token, "for");
+  tok =  skip(tok, "for");
   node = new_node(ND_FOR, start);
-  token =  skip(token, "(");
-  if(!consume(&token, token, ";")) {
-    node->init = new_node_unary(ND_EXPR_STMT, expr(&token, token), token);
-    token =  skip(token, ";");
+  tok =  skip(tok, "(");
+  if(!consume(&tok, tok, ";")) {
+    node->init = new_node_unary(ND_EXPR_STMT, expr(&tok, tok), tok);
+    tok =  skip(tok, ";");
   }
-  if(!consume(&token, token, ";")) {
-    node->cond = expr(&token, token);
-    token =  skip(token, ";");
+  if(!consume(&tok, tok, ";")) {
+    node->cond = expr(&tok, tok);
+    tok =  skip(tok, ";");
   }
-  if(!consume(&token, token, ")")) {
-    node->inc = new_node_unary(ND_EXPR_STMT, expr(&token, token), token);
-    token =  skip(token, ")");
+  if(!consume(&tok, tok, ")")) {
+    node->inc = new_node_unary(ND_EXPR_STMT, expr(&tok, tok), tok);
+    tok =  skip(tok, ")");
   }
-  node->then = stmt(&token, token);
+  node->then = stmt(&tok, tok);
 
+  *rest = tok;
   return node;
 }
 
 // return_stmt = "return" expr
 static Node *return_stmt(Token **rest, Token *tok) {
   Node *node;
-  Token *start = token;
+  Token *start = tok;
 
-  token =  skip(token, "return");
-  node = new_node_unary(ND_RETURN, expr(&token, token), start);
-  token =  skip(token, ";");
+  tok =  skip(tok, "return");
+  node = new_node_unary(ND_RETURN, expr(&tok, tok), start);
+  tok =  skip(tok, ";");
+
+  *rest = tok;
   return node;
 }
 
 // expr_stmt
 static Node *expr_stmt(Token **rest, Token *tok) {
   Node *node;
-  Token *start = token;
+  Token *start = tok;
 
-  node = new_node_unary(ND_EXPR_STMT, expr(&token, token), start);
-  token =  skip(token, ";");
+  node = new_node_unary(ND_EXPR_STMT, expr(&tok, tok), start);
+  tok =  skip(tok, ";");
+
+  *rest = tok;
   return node;
 }
 
 // expr = assign ( "," expr )?
 static Node *expr(Token **rest, Token *tok) {
-  Node *node = assign(&token, token);
+  Node *node = assign(&tok, tok);
 
   // supporting "generized lvalue" supported by past GCC (already deprecated)
   // implemeted for convenient use
-  if (consume(&token, token, ","))
-    node = new_node_binary(ND_COMMA, node, expr(&token, token), token);
+  if (consume(&tok, tok, ","))
+    node = new_node_binary(ND_COMMA, node, expr(&tok, tok), tok);
 
+  *rest = tok;
   return node;
 }
 
 // assign = equality ("=" assign)?
 static Node *assign(Token **rest, Token *tok) {
-  Node *node = equality(&token, token);
-  Token *start = token;
+  Node *node = equality(&tok, tok);
+  Token *start = tok;
 
-  if (consume(&token, token, "="))
-    node = new_node_binary(ND_ASSIGN, node, assign(&token, token), start);
+  if (consume(&tok, tok, "="))
+    node = new_node_binary(ND_ASSIGN, node, assign(&tok, tok), start);
 
+  *rest = tok;
   return node;
 }
 
 // equality = relational ('==' relational | '!=' relational)*
 static Node *equality(Token **rest, Token *tok) {
-  Node *node = relational(&token, token);
-  Token *start = token;
+  Node *node = relational(&tok, tok);
+  Token *start = tok;
 
   for(;;) {
-    if (consume(&token, token, "=="))
-      node = new_node_binary(ND_EQ, node, relational(&token, token), start);
-    else if (consume(&token, token, "!="))
-      node = new_node_binary(ND_NE, node, relational(&token, token), start);
-    else
-      return node;
+    if (consume(&tok, tok, "==")) {
+      node = new_node_binary(ND_EQ, node, relational(&tok, tok), start);
+      continue;
+    }
+    if (consume(&tok, tok, "!=")) {
+      node = new_node_binary(ND_NE, node, relational(&tok, tok), start);
+      continue;
+    }
+
+    *rest = tok;
+    return node;
   }
 }
 
 // relational = add ("<" add | "<=" add | ">" add | ">=" add)*
 static Node *relational(Token **rest, Token *tok) {
-  Node *node = add(&token, token);
-  Token *start = token;
+  Node *node = add(&tok, tok);
+  Token *start = tok;
 
   for(;;) {
-    if (consume(&token, token, "<"))
-      node = new_node_binary(ND_LT, node, add(&token, token), start);
-    else if (consume(&token, token, "<="))
-      node = new_node_binary(ND_LE, node, add(&token, token), start);
-    else if (consume(&token, token, ">"))
-      node = new_node_binary(ND_LT, add(&token, token), node, start);
-    else if (consume(&token, token, ">="))
-      node = new_node_binary(ND_LE, add(&token, token), node, start);
-    else
-      return node;
+    if (consume(&tok, tok, "<")) {
+      node = new_node_binary(ND_LT, node, add(&tok, tok), start);
+      continue;
+    }
+    if (consume(&tok, tok, "<=")) {
+      node = new_node_binary(ND_LE, node, add(&tok, tok), start);
+      continue;
+    }
+    if (consume(&tok, tok, ">")) {
+      node = new_node_binary(ND_LT, add(&tok, tok), node, start);
+      continue;
+    }
+    if (consume(&tok, tok, ">=")) {
+      node = new_node_binary(ND_LE, add(&tok, tok), node, start);
+      continue;
+    }
+
+    *rest = tok;
+    return node;
   }
 }
 
 // add = mul ("+" mul | "-" mul)*
 static Node *add(Token **rest, Token *tok) {
-  Node *node = mul(&token, token);
-  Token *start = token;
+  Node *node = mul(&tok, tok);
+  Token *start = tok;
 
   for(;;) {
-    if (consume(&token, token, "+"))
-      node = new_node_add(node, mul(&token, token), start);
-    else if (consume(&token, token, "-"))
-      node = new_node_sub(node, mul(&token, token), start);
-    else
-      return node;
+    if (consume(&tok, tok, "+")) {
+      node = new_node_add(node, mul(&tok, tok), start);
+      continue;
+    }
+    if (consume(&tok, tok, "-")) {
+      node = new_node_sub(node, mul(&tok, tok), start);
+      continue;
+    }
+
+    *rest = tok;
+    return node;
   }
 }
 
 // mul = unary ("*" unary | "/" unary)*
 static Node *mul(Token **rest, Token *tok) {
-  Node *node = unary(&token, token);
-  Token *start = token;
+  Node *node = unary(&tok, tok);
+  Token *start = tok;
 
   for(;;) {
-    if (consume(&token, token, "*"))
-      node = new_node_binary(ND_MUL, node, unary(&token, token), start);
-    else if (consume(&token, token, "/"))
-      node = new_node_binary(ND_DIV, node, unary(&token, token), start);
-    else
-      return node;
+    if (consume(&tok, tok, "*")) {
+      node = new_node_binary(ND_MUL, node, unary(&tok, tok), start);
+      continue;
+    }
+    else if (consume(&tok, tok, "/")) {
+      node = new_node_binary(ND_DIV, node, unary(&tok, tok), start);
+      continue;
+    }
+
+    *rest = tok;
+    return node;
   }
 }
 
 // unary = ("+" | "-" | "*" | "&")? unary
 //       | postfix
 static Node *unary(Token **rest, Token *tok) {
-  Token *start = token;
+  Token *start = tok;
 
-  if (consume(&token, token, "+"))
-    return unary(&token, token);
-  if (consume(&token, token, "-"))
-    return new_node_binary(ND_SUB, new_node_num(0, start), unary(&token, token), start);
-  if (consume(&token, token, "&"))
-    return new_node_unary(ND_ADDR, unary(&token, token), start);
-  if (consume(&token, token, "*"))
-    return new_node_unary(ND_DEREF, unary(&token, token), start);
-  return postfix(&token, token);
+  if (equal(tok, "+"))
+    return unary(rest, tok->next);
+  if (equal(tok, "-"))
+    return new_node_binary(ND_SUB, new_node_num(0, start), unary(rest, tok->next), start);
+  if (equal(tok, "&"))
+    return new_node_unary(ND_ADDR, unary(rest, tok->next), start);
+  if (equal(tok, "*"))
+    return new_node_unary(ND_DEREF, unary(rest, tok->next), start);
+  return postfix(rest, tok);
 }
 
 static Member *get_struct_member(Type *ty, Token *tok) {
@@ -908,31 +940,33 @@ static Node *struct_ref(Token **rest, Token *tok, Node *lhs) {
 
 // postfix = primary ("[" expr "]" | "." ident | "->" ident)*
 static Node *postfix(Token **rest, Token *tok) {
-  Token *start = token;
-  Node *node = primary(&token, token);
+
+  Token *start = tok;
+  Node *node = primary(&tok, tok);
 
   for (;;) {
-    if (consume(&token, token, "["))  {
+    if (consume(&tok, tok, "["))  {
       // x[y] is syntax sugar for *(x + y)
-      Node *idx = expr(&token, token);
-      token =  skip(token, "]");
+      Node *idx = expr(&tok, tok);
+      tok =  skip(tok, "]");
       node = new_node_unary(ND_DEREF, new_node_add(node, idx, start), start);
       continue;
     }
 
-    if (consume(&token, token, ".")) {
-      node = struct_ref(&token, token, node);
-      expect_ident(&token, token);
+    if (consume(&tok, tok, ".")) {
+      node = struct_ref(&tok, tok, node);
+      expect_ident(&tok, tok);
       continue;
     }
 
-    if (consume(&token, token, "->")) {
+    if (consume(&tok, tok, "->")) {
       node = new_node_unary(ND_DEREF, node, start);
-      node = struct_ref(&token, token, node);
-      expect_ident(&token, token);
+      node = struct_ref(&tok, tok, node);
+      expect_ident(&tok, tok);
       continue;
     }
 
+    *rest = tok;
     return node;
   }
 }
@@ -944,13 +978,13 @@ static Node *postfix(Token **rest, Token *tok) {
 //           | str
 //           | num
 static Node *primary(Token **rest, Token *tok) {
-  Token *start = token;
+  Token *start = tok;
 
-  if (consume(&token, token, "(")) {
-    if (equal(token, "{")) {
+  if (consume(&tok, tok, "(")) {
+    if (equal(tok, "{")) {
       Node *node = new_node(ND_STMT_EXPR, start);
-      node->body = block_stmt(&token, token)->body;
-      token =  skip(token, ")");
+      node->body = block_stmt(&tok, tok)->body;
+      tok =  skip(tok, ")");
 
       Node *cur = node->body;
       while(cur && cur->next)
@@ -958,43 +992,48 @@ static Node *primary(Token **rest, Token *tok) {
 
       if (!cur || cur->kind != ND_EXPR_STMT)
         error_tok(start, "statement expression returning void is not supported");
+      *rest = tok;
       return node;
     }
 
-    Node *node = expr(&token, token);
-    token =  skip(token, ")");
+    Node *node = expr(&tok, tok);
+    tok =  skip(tok, ")");
+    *rest = tok;
     return node;
   }
 
-  if (token->kind == TK_IDENT) {
-    return func_or_var(&token, token);
+  if (tok->kind == TK_IDENT) {
+    return func_or_var(rest, tok);
   }
 
-  if (consume(&token, token, "sizeof")) {
-    Node *node = unary(&token, token);
+  if (consume(&tok, tok, "sizeof")) {
+    Node *node = unary(&tok, tok);
     generate_type(node);
+    *rest = tok;
     return new_node_num(size_of(node->ty), start);
   }
 
-  if (token->kind == TK_STR) {
-    Var *var = new_string_literal(token->contents, token->cont_len);
-    expect_string(&token, token);
+  if (tok->kind == TK_STR) {
+    Var *var = new_string_literal(tok->contents, tok->cont_len);
+    expect_string(&tok, tok);
+    *rest = tok;
     return new_node_var(var, start);
   }
 
-  return new_node_num(expect_number(&token, token), start);
+  return new_node_num(expect_number(rest, tok), start);
 }
 
 // func_or_var = func(arg_list) | var
 static Node *func_or_var(Token **rest, Token *tok) {
-  Token *start = token;
-  char *name = expect_ident(&token, token);
+  Token *start = tok;
+  char *name = expect_ident(&tok, tok);
 
-  if (consume(&token, token, "(")) {
+  if (consume(&tok, tok, "(")) {
     Node *node = new_node(ND_FUNCALL, start);
     node->funcname = name;
-    node->args = arg_list(&token, token);
-    token =  skip(token, ")");
+    node->args = arg_list(&tok, tok);
+    tok =  skip(tok, ")");
+    *rest = tok;
     return node;
   }
 
@@ -1002,6 +1041,7 @@ static Node *func_or_var(Token **rest, Token *tok) {
   if (!sc || !sc->var) {
     error_tok(start, "undefined variable");
   }
+  *rest = tok;
   return new_node_var(sc->var, start);
 }
 
@@ -1010,11 +1050,12 @@ static Node *arg_list(Token **rest, Token *tok) {
   Node head = {0};
   Node *cur = &head;
 
-  while (!equal(token, ")")) {
+  while (!equal(tok, ")")) {
     if (cur != &head)
-      token =  skip(token, ",");
-    cur = cur->next = assign(&token, token);
+      tok =  skip(tok, ",");
+    cur = cur->next = assign(&tok, tok);
   }
 
+  *rest = tok;
   return head.next;
 }
