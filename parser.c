@@ -419,20 +419,24 @@ static Type *typespec(Token **rest, Token *tok, VarAttr *attr) {
 //             | "[" num "]" type-suffix
 //             | ε
 static Type *type_suffix(Token **rest, Token *tok, Type *ty) {
-  if (consume(&token, token, "(")) {
+  if (consume(&tok, tok, "(")) {
     ty = func_returning(ty);
-    ty->params = func_params(&token, token);
-    token =  skip(token, ")");
+    ty->params = func_params(&tok, tok);
+    tok =  skip(tok, ")");
+
+    *rest = tok;
     return ty;
   }
-  if (consume(&token, token, "[")) {
-    int sz = expect_number(&token, token);
-    token =  skip(token, "]");
-    ty = type_suffix(&token, token, ty);  // first, define rightmost sub-array's size
+  if (consume(&tok, tok, "[")) {
+    int sz = expect_number(&tok, tok);
+    tok =  skip(tok, "]");
+    ty = type_suffix(&tok, tok, ty);  // first, define rightmost sub-array's size
     ty = array_of(ty, sz); // this array composes of sz length of subarrays above
+    *rest = tok;
     return ty;
   }
 
+  *rest = tok;
   return ty;
 }
 
@@ -445,9 +449,7 @@ static Type *declarator(Token **rest, Token *tok, Type *ty) {
     Type *placeholder = calloc(1, sizeof(Type));
     Type *new_ty = declarator(&tok, tok, placeholder);
     tok =  skip(tok, ")");
-    token = tok; // FIXME
     *placeholder = *type_suffix(&tok, tok, ty);
-    tok = token; // FIXME
     *rest = tok;
     return new_ty;
   }
@@ -455,12 +457,9 @@ static Type *declarator(Token **rest, Token *tok, Type *ty) {
   Token *ident = tok;
   expect_ident(&tok, tok);
 
-  token = tok; // FIXME
-  ty = type_suffix(&tok, tok, ty);
-  tok = token; // FIXME
+  ty = type_suffix(rest, tok, ty);
   ty->ident = ident;
 
-  *rest = tok;
   return ty;
 }
 
@@ -468,17 +467,17 @@ static Type *declarator(Token **rest, Token *tok, Type *ty) {
 static Node *declaration(Token **rest, Token *tok) {
   Node head = {};
   Node *cur = &head;
-  Token *start_decl = token;
+  Token *start_decl = tok;
 
   VarAttr attr = {0};
-  Type *basety = typespec(&token, token, &attr);
+  Type *basety = typespec(&tok, tok, &attr);
 
-  while(!consume(&token, token, ";")) {
+  while(!consume(&tok, tok, ";")) {
     if (cur != &head)
-      token =  skip(token, ",");
+      tok =  skip(tok, ",");
 
-    Token *start = token;
-    Type *ty = declarator(&start, start, basety);
+    Token *start = tok;
+    Type *ty = declarator(&tok, tok, basety);
     if (ty->kind == TY_VOID)
       error_tok(start, "variable declared void");
 
@@ -489,9 +488,12 @@ static Node *declaration(Token **rest, Token *tok) {
 
     Var *var = new_lvar(get_identifier(ty->ident), ty);
 
-    Node *node = new_node_var(var, token);
-    if (consume(&token, token, "="))
-      node = new_node_binary(ND_ASSIGN, node, assign(&token, token), start);
+    Node *node = new_node_var(var, tok);
+    if (consume(&tok, tok, "=")) {
+      token = tok; //FIXME
+      node = new_node_binary(ND_ASSIGN, node, assign(&tok, tok), start);
+      tok = token; //FIXME
+    }
 
     cur = cur->next = new_node_unary(ND_EXPR_STMT, node, start);
   }
@@ -499,6 +501,7 @@ static Node *declaration(Token **rest, Token *tok) {
   Node *blk = new_node(ND_BLOCK, start_decl);
   blk->body = head.next;
 
+  *rest = tok;
   return blk;
 }
 
@@ -632,16 +635,17 @@ static Type *func_params(Token **rest, Token *tok) {
   Type head = {0};
   Type *cur = &head;
 
-  while (!equal(token, ")")) {
+  while (!equal(tok, ")")) {
     if (cur != &head)
-      token =  skip(token, ",");
+      tok =  skip(tok, ",");
 
     Token *start = tok;
-    Type *basety = typespec(&token, token, NULL);
-    Type *ty = declarator(&token, token, basety);
+    Type *basety = typespec(&tok, tok, NULL);
+    Type *ty = declarator(&tok, tok, basety);
     cur = cur->next = copy_ty(ty);
   }
 
+  *rest = tok;
   return head.next;
 }
 
