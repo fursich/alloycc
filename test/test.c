@@ -60,6 +60,24 @@ int sub_long(long a, long b, long c) {
 
 int main() {
 
+  assert(1, sizeof(char), "sizeof(char)");
+  assert(2, sizeof(short), "sizeof(short)");
+  assert(2, sizeof(short int), "sizeof(short int)");
+  assert(2, sizeof(int short), "sizeof(int short)");
+  assert(4, sizeof(int), "sizeof(int)");
+  assert(8, sizeof(long), "sizeof(long)");
+  assert(8, sizeof(long int), "sizeof(long int)");
+  assert(8, sizeof(long int), "sizeof(long int)");
+  assert(8, sizeof(char *), "sizeof(char *)");
+  assert(8, sizeof(int *), "sizeof(int *)");
+  assert(8, sizeof(long *), "sizeof(long *)");
+  assert(8, sizeof(int **), "sizeof(int **)");
+  assert(8, sizeof(int(*)[4]), "sizeof(int(*)[4])");
+  assert(32, sizeof(int*[4]), "sizeof(int*[4])");
+  assert(16, sizeof(int[4]), "sizeof(int[4])");
+  assert(48, sizeof(int[3][4]), "sizeof(int[3][4])");
+  assert(8, sizeof(struct {int a; int b;}), "sizeof(struct {int a; int b;})");
+
   assert(1, ({ typedef int t; t x=1; x; }), "({ typedef int t; t x=1; x; })");
   assert(1, ({ typedef struct {int a;} t; t x; x.a=1; x.a; }), "({ typedef struct {int a;} t; t x; x.a=1; x.a; })");
   assert(1, ({ typedef int t; t t=1; t; }), "({ typedef int t; t t=1; t; })");

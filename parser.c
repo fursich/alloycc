@@ -461,6 +461,28 @@ static Type *declarator(Token **rest, Token *tok, Type *ty) {
   return ty;
 }
 
+// abstract-declarator = "*" ("(" abstract-declarator ")")? type-suffix
+static Type *abstract_declarator(Token **rest, Token *tok, Type *ty) {
+  while (consume(&tok, tok, "*"))
+    ty = pointer_to(ty);
+
+  if (consume(&tok, tok, "(")) {
+    Type *placeholder = calloc(1, sizeof(Type));
+    Type *new_ty = abstract_declarator(&tok, tok, placeholder);
+    tok =  skip(tok, ")");
+    *placeholder = *type_suffix(rest, tok, ty);
+    return new_ty;
+  }
+
+  return type_suffix(rest, tok, ty);
+}
+
+// type-name = typespec abstract-declarator
+static Type *typename(Token **rest, Token *tok) {
+  Type *ty = typespec(&tok, tok, NULL);
+  return abstract_declarator(rest, tok, ty);
+}
+
 // declaration = typespec (declarator ( = expr)? ( "," declarator ( = expr)? )* )? ";"
 static Node *declaration(Token **rest, Token *tok) {
   Node head = {};
@@ -971,6 +993,7 @@ static Node *postfix(Token **rest, Token *tok) {
 
 // primary = "(" "{" stmt stmt* "}" ")"
 //           | "(" expr ")"
+//           | "sizeof" "(" typename ")"
 //           | "sizeof" unary
 //           | func_or_var
 //           | str
@@ -1005,6 +1028,12 @@ static Node *primary(Token **rest, Token *tok) {
   }
 
   if (consume(&tok, tok, "sizeof")) {
+    if (equal(tok, "(") && is_typename(tok->next)) {
+      Type *ty = typename(&tok, tok->next);
+      *rest = skip(tok, ")");
+      return new_node_num(size_of(ty), tok);
+    }
+
     Node *node = unary(&tok, tok);
     generate_type(node);
     *rest = tok;
