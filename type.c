@@ -62,23 +62,47 @@ bool is_pointer_like(Type *ty) {
   return ty->base;
 }
 
+static bool is_scalar(Type *ty) {
+  return is_integer(ty) || is_pointer_like(ty);
+}
+
+static Type *get_common_type(Type *ty1, Type *ty2) {
+  if (ty1->base)
+    return pointer_to(ty1->base);
+  if (size_of(ty1) == 8 || size_of(ty2) == 8)
+    return ty_long;
+  return ty_int;
+}
+
+static void usual_arith_conv(Node **lhs, Node **rhs) {
+  Type *ty = get_common_type((*lhs)->ty, (*rhs)->ty);
+  *lhs = new_node_cast(*lhs, ty);
+  *rhs = new_node_cast(*rhs, ty);
+}
+
 static void set_type_for_expr(Node *node) {
   switch(node->kind) {
+    case ND_NUM:
+      node->ty = (node->val == (int)node->val) ? ty_int : ty_long;
+      return;
     case ND_ADD:
     case ND_SUB:
     case ND_MUL:
     case ND_DIV:
-    case ND_ASSIGN:
+      usual_arith_conv(&node->lhs, &node->rhs);
       node->ty = node->lhs->ty;
       return;
     case ND_EQ:
     case ND_NE:
     case ND_LT:
     case ND_LE:
-      node->ty = ty_long; // TODO: bool?
+      usual_arith_conv(&node->lhs, &node->rhs);
+      node->ty = ty_int;
       return;
-    case ND_NUM:
-      node->ty = ty_long;
+    case ND_ASSIGN:
+      if (is_scalar(node->rhs->ty))
+        node->rhs = new_node_cast(node->rhs, node->lhs->ty);
+      node->ty = node->lhs->ty;
       return;
     case ND_FUNCALL:
       node->ty = ty_long; // TODO: use return_ty

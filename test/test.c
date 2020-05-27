@@ -60,6 +60,42 @@ int sub_long(long a, long b, long c) {
 
 int main() {
 
+  assert(4, sizeof(-10 + 5), "sizeof(-10 + 5)");
+  assert(4, sizeof(-10 - 5), "sizeof(-10 - 5)");
+  assert(4, sizeof(-10 * 5), "sizeof(-10 * 5)");
+  assert(4, sizeof(-10 / 5), "sizeof(-10 / 5)");
+
+  assert(8, sizeof(-10 + (long)5), "sizeof(-10 + (long)5)");
+  assert(8, sizeof(-10 - (long)5), "sizeof(-10 - (long)5)");
+  assert(8, sizeof(-10 * (long)5), "sizeof(-10 * (long)5)");
+  assert(8, sizeof(-10 / (long)5), "sizeof(-10 / (long)5)");
+  assert(8, sizeof((long)-10 + 5), "sizeof((long)-10 + 5)");
+  assert(8, sizeof((long)-10 - 5), "sizeof((long)-10 - 5)");
+  assert(8, sizeof((long)-10 * 5), "sizeof((long)-10 * 5)");
+  assert(8, sizeof((long)-10 / 5), "sizeof((long)-10 / 5)");
+
+  assert((long)-5, -10 + (long)5, "-10 + (long)5");
+  assert((long)-15, -10 - (long)5, "-10 - (long)5");
+  assert((long)-50, -10 * (long)5, "-10 * (long)5");
+  assert((long)-2, -10 / (long)5, "-10 / (long)5");
+
+  assert(1, -2 < (long)-1, "-2 < (long)-1");
+  assert(1, -2 <= (long)-1, "-2 <= (long)-1");
+  assert(0, -2 > (long)-1, "-2 > (long)-1");
+  assert(0, -2 >= (long)-1, "-2 >= (long)-1");
+
+  assert(1, (long)-2 < -1, "(long)-2 < -1");
+  assert(1, (long)-2 <= -1, "(long)-2 <= -1");
+  assert(0, (long)-2 > -1, "(long)-2 > -1");
+  assert(0, (long)-2 >= -1, "(long)-2 >= -1");
+
+  assert(0, 2147483647 + 2147483647 + 2, "2147483647 + 2147483647 + 2");
+  assert((long)-1, ({ long x; x=-1; x; }), "({ long x; x=-1; x; })");
+
+  assert(1, ({ char x[3]; x[0]=0; x[1]=1; x[2]=2; char *y=x+1; y[0]; }), "({ char x[3]; x[0]=0; x[1]=1; x[2]=2; char *y=x+1; y[0]; })");
+  assert(0, ({ char x[3]; x[0]=0; x[1]=1; x[2]=2; char *y=x+1; y[-1]; }), "({ char x[3]; x[0]=0; x[1]=1; x[2]=2; char *y=x+1; y[-1]; })");
+  assert(5, ({ struct t {char a;} x, y; x.a=5; y=x; y.a; }), "({ struct t {char a;} x, y; x.a=5; y=x; y.a; })");
+
   assert(131585, (int)8590066177, "(int)8590066177");
   assert(513, (short)8590066177, "(short)8590066177");
   assert(1, (char)8590066177, "(char)8590066177");

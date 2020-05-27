@@ -240,6 +240,14 @@ static Node *new_node_sub(Node *lhs, Node *rhs, Token *tok) {
   error_tok(tok, "invalid operands");
 }
 
+Node *new_node_cast(Node *expr, Type *ty) {
+  generate_type(expr);
+
+  Node *node = new_node_unary(ND_CAST, expr, expr->token);
+  node->ty = copy_ty(ty);
+  return node;
+}
+
 static bool is_typename(Token *tok);
 static Type *typespec(Token **rest, Token *tok, VarAttr *attr);
 static Type *declarator(Token **rest, Token *tok, Type *base);

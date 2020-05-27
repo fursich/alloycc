@@ -147,6 +147,7 @@ struct Program {
   Var *globals;
 };
 
+Node *new_node_cast(Node *expr, Type *ty);
 Program *parse(Token *tok);
 
 //
