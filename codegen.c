@@ -17,6 +17,16 @@ static const char *argreg32[] = { "edi", "esi", "edx", "ecx", "e8", "e9" };
 static const char *argreg64[] = { "rdi", "rsi", "rdx", "rcx", "r8", "r9" };
 static Function  *current_fn;
 
+static char *xreg(Type *ty, int idx) {
+  static char *reg64[] = {"rsi", "rdi"};
+  static char *reg32[] = {"esi", "edi"};
+
+  if (ty->base || size_of(ty) == 8)
+    return reg64[idx];
+
+  return reg32[idx];
+}
+
 static void gen_addr(Node *node) {
   switch (node->kind) {
     case ND_VAR:
@@ -96,16 +106,20 @@ static void store(Type *ty) {
   printf("  push rsi\n");
 }
 
-static void cast(Type *ty) {
+static void cast(Type *from, Type *to) {
+  if (to->kind == TY_VOID)
+    return;
+
   printf("  pop rax\n");
 
-  if (ty->size == 1) {
+  if (size_of(to) == 1)
     printf("  movsx rax, al\n");
-  } else if (ty->size == 2) {
+  else if (size_of(to) == 2)
     printf("  movsx rax, ax\n");
-  } else if  (ty->size == 4) {
+  else if  (size_of(to) == 4)
     printf("  movsxd rax, eax\n");
-  }
+  else if  (is_integer(from) && size_of(from) < 8)
+    printf("  movsx rax, eax\n");
 
   printf("  push rax\n");
 }
@@ -161,7 +175,7 @@ static void gen_expr(Node *node) {
     return;
   case ND_CAST:
     gen_expr(node->lhs);
-    cast(node->ty);
+    cast(node->lhs->ty, node->ty);
     return;
   case ND_FUNCALL: {
     load_args(node->args);
@@ -200,48 +214,60 @@ static void gen_expr(Node *node) {
   gen_expr(node->lhs);
   gen_expr(node->rhs);
 
-  printf("  pop rdi\n"); // rhs
-  printf("  pop rax\n");  // lhs
+  char *rs = xreg(node->lhs->ty, 0);
+  char *rd = xreg(node->lhs->ty, 1);
+
+  printf("  pop rsi\n");  // rhs
+  printf("  pop rdi\n");  // lhs
 
   switch (node->kind) {
   case ND_ADD:
-    printf("  add rax, rdi\n");
+    printf("  add %s, %s\n", rd, rs);
     break;
   case ND_SUB:
-    printf("  sub rax, rdi\n");
+    printf("  sub %s, %s\n", rd, rs);
     break;
   case ND_MUL:
-    printf("  imul rax, rdi\n");
+    printf("  imul %s, %s\n", rd, rs);
     break;
   case ND_DIV:
-    printf("  cqo\n");
-    printf("  idiv rdi\n");
+    if (size_of(node->ty) == 8) {
+      printf("  mov rax, %s\n", rd);
+      printf("  cqo\n");
+      printf("  idiv %s\n", rs);
+      printf("  mov %s, rax\n", rd);
+    } else {
+      printf("  mov eax, %s\n", rd);
+      printf("  cdq\n");
+      printf("  idiv %s\n", rs);
+      printf("  movsxd rdi, eax\n"); // result extended to 64-bit
+    }
     break;
   case ND_EQ:
-    printf("  cmp rax, rdi\n");
+    printf("  cmp %s, %s\n", rd, rs);
     printf("  sete al\n");
-    printf("  movzx rax, al\n");
+    printf("  movzx %s, al\n", rd);
     break;
   case ND_NE:
-    printf("  cmp rax, rdi\n");
+    printf("  cmp %s, %s\n", rd, rs);
     printf("  setne al\n");
-    printf("  movzx rax, al\n");
+    printf("  movzx %s, al\n", rd);
     break;
   case ND_LT:
-    printf("  cmp rax, rdi\n");
+    printf("  cmp %s, %s\n", rd, rs);
     printf("  setl al\n");
-    printf("  movzx rax, al\n");
+    printf("  movzx %s, al\n", rd);
     break;
   case ND_LE:
-    printf("  cmp rax, rdi\n");
+    printf("  cmp %s, %s\n", rd, rs);
     printf("  setle al\n");
-    printf("  movzx rax, al\n");
+    printf("  movzx %s, al\n", rd);
     break;
   default:
     error_tok(node->token, "invalid expression");
   }
 
-  printf("  push rax\n");
+  printf("  push rdi\n");
 }
 
 static void gen_stmt(Node *node) {

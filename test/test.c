@@ -60,6 +60,9 @@ int sub_long(long a, long b, long c) {
 
 int main() {
 
+  assert(0,           ({  int x = 1; int i; for(i=0;i<31;i=i+1) { x = x * 2; } (x * 2) / 2; }), "({ int x = 1; int i; for(i=0;i<31;i=i+1) { x = x * 2; } (x * 2) / 2; })");
+  assert(-2147483648, ({ long x = 1; int i; for(i=0;i<31;i=i+1) { x = x * 2; } (x * 2) / 2; }), "({ long x = 1; int i; for(i=0;i<31;i=i+1) { x = x * 2; } (x * 2) / 2; })");
+
   assert(4, sizeof(-10 + 5), "sizeof(-10 + 5)");
   assert(4, sizeof(-10 - 5), "sizeof(-10 - 5)");
   assert(4, sizeof(-10 * 5), "sizeof(-10 * 5)");
