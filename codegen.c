@@ -96,6 +96,20 @@ static void store(Type *ty) {
   printf("  push rsi\n");
 }
 
+static void cast(Type *ty) {
+  printf("  pop rax\n");
+
+  if (ty->size == 1) {
+    printf("  movsx rax, al\n");
+  } else if (ty->size == 2) {
+    printf("  movsx rax, ax\n");
+  } else if  (ty->size == 4) {
+    printf("  movsxd rax, eax\n");
+  }
+
+  printf("  push rax\n");
+}
+
 static void load_args(Node *args) {
   int argc = 0;
 
@@ -144,6 +158,10 @@ static void gen_expr(Node *node) {
     return;
   case ND_NUM:
     printf("  push %d\n", node->val);
+    return;
+  case ND_CAST:
+    gen_expr(node->lhs);
+    cast(node->ty);
     return;
   case ND_FUNCALL: {
     load_args(node->args);

@@ -60,6 +60,16 @@ int sub_long(long a, long b, long c) {
 
 int main() {
 
+  assert(131585, (int)8590066177, "(int)8590066177");
+  assert(513, (short)8590066177, "(short)8590066177");
+  assert(1, (char)8590066177, "(char)8590066177");
+  assert(1, (long)1, "(long)1");
+  assert(0, (long)&*(int *)0, "(long)&*(int *)0");
+  assert(513, ({ int x=512; *(char *)&x=1; x; }), "({ int x=512; *(char *)&x=1; x; })");
+  assert(5, ({ int x=5; long y=(long)&x; *(int*)y; }), "({ int x=5; long y=(long)&x; *(int*)y; })");
+
+  (void)1;
+
   assert(1, sizeof(char), "sizeof(char)");
   assert(2, sizeof(short), "sizeof(short)");
   assert(2, sizeof(short int), "sizeof(short int)");

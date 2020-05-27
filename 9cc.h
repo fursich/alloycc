@@ -83,6 +83,7 @@ typedef enum {
   ND_FUNCALL,   // function call
   ND_VAR,       // local variables
   ND_NUM,       // Integer
+  ND_CAST,      // type cast
 } NodeKind;
 
 typedef struct Var Var;
