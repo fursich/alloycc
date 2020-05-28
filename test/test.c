@@ -2,6 +2,10 @@
  * test code for 9cc
  */
 
+// function declarations;
+int printf();
+int exit();
+
 // test function
 int assert(int expected, int actual, char *code) {
   if (expected == actual) {
@@ -18,10 +22,6 @@ int g1, g2[4];
 
 // typedef
 typedef int MyInt, MyInt2[4];
-
-// function declarations;
-int printf();
-int exit();
 
 // functions
 int echo_self(int i) {

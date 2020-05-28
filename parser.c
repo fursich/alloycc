@@ -113,11 +113,13 @@ static Var *new_lvar(char *name, Type *ty) {
   return var;
 }
 
-static Var *new_gvar(char *name, Type *ty) {
+static Var *new_gvar(char *name, Type *ty, bool emit) {
   Var *var = new_var(name, ty);
   var->is_local = false;
-  var->next = globals;
-  globals = var;
+  if (emit) {
+    var->next = globals;
+    globals = var;
+  }
   push_scope(name)->var = var;
   return var;
 }
@@ -158,7 +160,7 @@ static char *new_gvar_name() {
 
 static Var *new_string_literal(char *s, int len) {
   Type *ty = array_of(ty_char, len);
-  Var *var = new_gvar(new_gvar_name(), ty);
+  Var *var = new_gvar(new_gvar_name(), ty, true);
   var->init_data = s;
   return var;
 }
@@ -277,7 +279,7 @@ static Node *cast(Token **rest, Token *tok);
 static Node *unary(Token **rest, Token *tok);
 static Node *postfix(Token **rest, Token *tok);
 static Node *primary(Token **rest, Token *tok);
-static Node *func_or_var(Token **rest, Token *tok);
+static Node *funcall(Token **rest, Token *tok);
 static Node *arg_list(Token **rest, Token *tok);
 
 // program = (funcdef | global-var)*
@@ -308,15 +310,15 @@ Program *parse(Token *tok) {
 
     // function
     if (ty->kind == TY_FUNC) {
-      if (consume(&tok, tok, ";"))
-        continue;
-      cur = cur->next = funcdef(&tok, tok, ty);
+      new_gvar(get_identifier(ty->ident), ty, false);
+      if (!consume(&tok, tok, ";"))
+        cur = cur->next = funcdef(&tok, tok, ty);
       continue;
     }
 
     // global variable = typespec declarator ("," declarator)* ";"
     for (;;) {
-      new_gvar(get_identifier(ty->ident), ty);
+      new_gvar(get_identifier(ty->ident), ty, true);
       if (consume(&tok, tok, ";"))
         break;
       tok =  skip(tok, ",");
@@ -1018,7 +1020,7 @@ static Node *postfix(Token **rest, Token *tok) {
 //           | "(" expr ")"
 //           | "sizeof" "(" typename ")"
 //           | "sizeof" unary
-//           | func_or_var
+//           | ident ("(" arg-list ")")?
 //           | str
 //           | num
 static Node *primary(Token **rest, Token *tok) {
@@ -1047,7 +1049,16 @@ static Node *primary(Token **rest, Token *tok) {
   }
 
   if (tok->kind == TK_IDENT) {
-    return func_or_var(rest, tok);
+    if (equal(tok->next, "("))
+      return funcall(rest, tok);
+
+    Token *start = tok;
+    char *name = expect_ident(rest, tok);
+
+    VarScope *sc = lookup_var(name);
+    if (!sc || !sc->var)
+      error_tok(start, "undefined variable");
+    return new_node_var(sc->var, start);
   }
 
   if (consume(&tok, tok, "sizeof")) {
@@ -1073,29 +1084,34 @@ static Node *primary(Token **rest, Token *tok) {
   return new_node_num(expect_number(rest, tok), start);
 }
 
-// func_or_var = func(arg_list) | var
-static Node *func_or_var(Token **rest, Token *tok) {
+// funcall = ident "(" arg-list ")"
+static Node *funcall(Token **rest, Token *tok) {
   Token *start = tok;
   char *name = expect_ident(&tok, tok);
 
-  if (consume(&tok, tok, "(")) {
-    Node *node = new_node(ND_FUNCALL, start);
-    node->funcname = name;
-    node->args = arg_list(&tok, tok);
-    tok =  skip(tok, ")");
-    *rest = tok;
-    return node;
+  VarScope *sc = lookup_var(name);
+  Type *ty;
+  if (sc) {
+    if (!sc->var || sc->var->ty->kind != TY_FUNC)
+      error_tok(start, "not a function");
+    ty = sc->var->ty->return_ty;
+  } else {
+    warn_tok(start, "implicit declaration of a function");
+    ty = ty_int;
   }
 
-  VarScope *sc = lookup_var(name);
-  if (!sc || !sc->var) {
-    error_tok(start, "undefined variable");
-  }
+  tok = skip(tok, "(");
+  Node *funcall = new_node(ND_FUNCALL, start);
+  funcall->funcname = name;
+  funcall->ty = ty;
+  funcall->args = arg_list(&tok, tok);
+  tok =  skip(tok, ")");
+
   *rest = tok;
-  return new_node_var(sc->var, start);
+  return funcall;
 }
 
-// arg_list = (assign (, assign)*)?
+// arg-list = (assign (, assign)*)?
 static Node *arg_list(Token **rest, Token *tok) {
   Node head = {0};
   Node *cur = &head;
@@ -1103,7 +1119,9 @@ static Node *arg_list(Token **rest, Token *tok) {
   while (!equal(tok, ")")) {
     if (cur != &head)
       tok =  skip(tok, ",");
-    cur = cur->next = assign(&tok, tok);
+    Node *arg = assign(&tok, tok);
+    generate_type(arg);
+    cur = cur->next = arg;
   }
 
   *rest = tok;
