@@ -126,6 +126,7 @@ struct Node {
 
   // Function call
   char *funcname;
+  Type *func_ty;
   Node *args;
 
   Var *var;   // used when kind == ND_VAR

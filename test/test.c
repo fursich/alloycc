@@ -66,7 +66,13 @@ char int_to_char(int x) {
   return x;
 }
 
+int div_long(long a, long b) {
+  return a / b;
+}
+
 int main() {
+
+  assert(-5, div_long(-10, 2), "div_long(-10, 2)");
 
   assert(3, ({ g3 = 3; *g3_ptr(); }), "({ g3 = 3; *g3_ptr(); })");
   assert(5, int_to_char(261), "int_to_char(261)");

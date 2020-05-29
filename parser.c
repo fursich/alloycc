@@ -281,7 +281,7 @@ static Node *unary(Token **rest, Token *tok);
 static Node *postfix(Token **rest, Token *tok);
 static Node *primary(Token **rest, Token *tok);
 static Node *funcall(Token **rest, Token *tok);
-static Node *arg_list(Token **rest, Token *tok);
+static Node *arg_list(Token **rest, Token *tok, Type *param_ty);
 
 // program = (funcdef | global-var)*
 Program *parse(Token *tok) {
@@ -1095,17 +1095,18 @@ static Node *funcall(Token **rest, Token *tok) {
   if (sc) {
     if (!sc->var || sc->var->ty->kind != TY_FUNC)
       error_tok(start, "not a function");
-    ty = sc->var->ty->return_ty;
+    ty = sc->var->ty;
   } else {
     warn_tok(start, "implicit declaration of a function");
-    ty = ty_int;
+    ty = func_returning(ty_int);
   }
 
   tok = skip(tok, "(");
   Node *funcall = new_node(ND_FUNCALL, start);
   funcall->funcname = name;
-  funcall->ty = ty;
-  funcall->args = arg_list(&tok, tok);
+  funcall->func_ty = ty;
+  funcall->ty = ty->return_ty;
+  funcall->args = arg_list(&tok, tok, ty->params);
   tok =  skip(tok, ")");
 
   *rest = tok;
@@ -1113,7 +1114,7 @@ static Node *funcall(Token **rest, Token *tok) {
 }
 
 // arg-list = (assign (, assign)*)?
-static Node *arg_list(Token **rest, Token *tok) {
+static Node *arg_list(Token **rest, Token *tok, Type *param_ty) {
   Node head = {0};
   Node *cur = &head;
 
@@ -1122,6 +1123,12 @@ static Node *arg_list(Token **rest, Token *tok) {
       tok =  skip(tok, ",");
     Node *arg = assign(&tok, tok);
     generate_type(arg);
+
+    if (param_ty) {
+      arg = new_node_cast(arg, param_ty);
+      param_ty = param_ty->next;
+    }
+
     cur = cur->next = arg;
   }
 
