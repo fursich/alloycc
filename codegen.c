@@ -112,6 +112,15 @@ static void cast(Type *from, Type *to) {
 
   printf("  pop rax\n");
 
+  if (to->kind == TY_BOOL) {
+    printf("  cmp rax, 0\n");
+    printf("  setne al\n");
+    printf("  movsx rax, al\n");
+
+    printf("  push rax\n");
+    return;
+  }
+
   if (size_of(to) == 1)
     printf("  movsx rax, al\n");
   else if (size_of(to) == 2)

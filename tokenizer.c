@@ -150,11 +150,13 @@ static bool is_keyword(Token *tok) {
 
     "sizeof",
 
+    "void",
+    "_Bool",
+
     "char",
     "short",
     "int",
     "long",
-    "void",
 
     "struct",
     "union",
