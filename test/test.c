@@ -18,7 +18,7 @@ int assert(int expected, int actual, char *code) {
 }
 
 // global vars
-int g1, g2[4];
+int g1, g2[4], g3;
 
 // typedef
 typedef int MyInt, MyInt2[4];
@@ -58,7 +58,18 @@ int sub_long(long a, long b, long c) {
   return a - b - c;
 }
 
+int *g3_ptr() {
+  return &g3;
+}
+
+char int_to_char(int x) {
+  return x;
+}
+
 int main() {
+
+  assert(3, ({ g3 = 3; *g3_ptr(); }), "({ g3 = 3; *g3_ptr(); })");
+  assert(5, int_to_char(261), "int_to_char(261)");
 
   assert(0,           ({  int x = 1; int i; for(i=0;i<31;i=i+1) { x = x * 2; } (x * 2) / 2; }), "({ int x = 1; int i; for(i=0;i<31;i=i+1) { x = x * 2; } (x * 2) / 2; })");
   assert(-2147483648, ({ long x = 1; int i; for(i=0;i<31;i=i+1) { x = x * 2; } (x * 2) / 2; }), "({ long x = 1; int i; for(i=0;i<31;i=i+1) { x = x * 2; } (x * 2) / 2; })");

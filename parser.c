@@ -37,6 +37,7 @@ static VarScope *var_scope;
 static TagScope *tag_scope;
 
 static int scope_depth;
+static Var *current_fn;
 
 static void enter_scope() {
   scope_depth++;
@@ -310,7 +311,7 @@ Program *parse(Token *tok) {
 
     // function
     if (ty->kind == TY_FUNC) {
-      new_gvar(get_identifier(ty->ident), ty, false);
+      current_fn = new_gvar(get_identifier(ty->ident), ty, false);
       if (!consume(&tok, tok, ";"))
         cur = cur->next = funcdef(&tok, tok, ty);
       continue;
@@ -800,14 +801,14 @@ static Node *for_stmt(Token **rest, Token *tok) {
 
 // return_stmt = "return" expr
 static Node *return_stmt(Token **rest, Token *tok) {
-  Node *node;
-  Token *start = tok;
+  Node *node = new_node(ND_RETURN, tok);
 
   tok =  skip(tok, "return");
-  node = new_node_unary(ND_RETURN, expr(&tok, tok), start);
-  tok =  skip(tok, ";");
+  Node *exp = expr(&tok, tok);
+  *rest =  skip(tok, ";");
 
-  *rest = tok;
+  generate_type(exp);
+  node->lhs = new_node_cast(exp, current_fn->ty->return_ty);
   return node;
 }
 
