@@ -75,6 +75,10 @@ _Bool bool_fn_sub(_Bool x) { return x - 1; }
 
 int main() {
 
+  assert(97, 'a', "'a'");
+  assert(10, '\n', "'\\n'");
+  assert(4, sizeof('a'), "sizeof('a')");
+
   assert(0, ({ _Bool x=0; x; }), "({ _Bool x=0; x; })");
   assert(1, ({ _Bool x=1; x; }), "({ _Bool x=1; x; })");
   assert(1, ({ _Bool x=2; x; }), "({ _Bool x=2; x; })");
