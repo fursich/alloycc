@@ -371,7 +371,8 @@ static void emit_text(Program *prog) {
     current_fn = fn;
 
     // label of the function
-    printf(".globl %s\n", fn->name);
+    if (!fn->is_static)
+      printf(".globl %s\n", fn->name);
     printf("%s:\n", fn->name);
 
     // prologue

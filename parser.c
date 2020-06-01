@@ -21,6 +21,7 @@ struct VarScope {
 // variable attributes (e.g. typedef, extern, etc)
 typedef struct {
   bool is_typedef;
+  bool is_static;
 } VarAttr;
 
 // Scope for struct, union or enum tags
@@ -81,9 +82,10 @@ static Program *new_program() {
   return prog;
 }
 
-static Function *new_function(Type *ty) {
+static Function *new_function(Type *ty, VarAttr *attr) {
   Function *func = calloc(1, sizeof(Function));
   func->name = get_identifier(ty->ident);
+  func->is_static = attr->is_static;
   // TODO: consider return type: func->return_ty = ty;
   return func;
 }
@@ -262,7 +264,7 @@ static Type *enum_specifier(Token **rest, Token *tok);
 static Type *declarator(Token **rest, Token *tok, Type *base);
 static Node *declaration(Token **rest, Token *tok);
 
-static Function *funcdef(Token **rest, Token *tok, Type *ty);
+static Function *funcdef(Token **rest, Token *tok);
 static Type *func_params(Token **rest, Token *tok);
 static Type *struct_decl(Token **rest, Token *tok);
 static Type *union_decl(Token **rest, Token *tok);
@@ -319,7 +321,7 @@ Program *parse(Token *tok) {
     if (ty->kind == TY_FUNC) {
       current_fn = new_gvar(get_identifier(ty->ident), ty, false);
       if (!consume(&tok, tok, ";"))
-        cur = cur->next = funcdef(&tok, tok, ty);
+        cur = cur->next = funcdef(&tok, start);
       continue;
     }
 
@@ -359,12 +361,20 @@ static Type *typespec(Token **rest, Token *tok, VarAttr *attr) {
   int counter = 0;
 
   while (is_typename(tok)) {
-    // Handle "typedef" keyword
-    if (equal(tok, "typedef")) {
+    // handle storage class specifiers
+    if (equal(tok, "typedef") || equal(tok, "static")) {
       if (!attr)
         error_tok(tok, "storage class specifier is not allowed in this context");
-      attr->is_typedef = true;
-      tok =  skip(tok, "typedef");
+
+      if (consume(&tok, tok, "typedef"))
+        attr->is_typedef = true;
+      else if(consume(&tok, tok, "static"))
+        attr->is_static = true;
+      else
+        error_tok(tok, "internal error");
+
+      if (attr->is_typedef + attr->is_static > 1)
+        error_tok(tok, "typedef and static may not be used together");
       continue;
     }
 
@@ -606,7 +616,7 @@ static Node *declaration(Token **rest, Token *tok) {
 // whether given token reprents a type
 static bool is_typename(Token *tok) {
   static char *kw[] = {
-    "void", "_Bool", "char", "short", "int", "long",
+    "static", "void", "_Bool", "char", "short", "int", "long",
     "struct", "union", "typedef", "enum",
   };
 
@@ -708,10 +718,13 @@ static Type *union_decl(Token **rest, Token *tok) {
 
 // funcdef = { block_stmt }
 // TODO: consider poiter-type
-static Function *funcdef(Token **rest, Token *tok, Type *ty) {
+static Function *funcdef(Token **rest, Token *tok) {
   locals = NULL;
 
-  Function *func = new_function(ty);
+  VarAttr attr = {0};
+  Type *basety = typespec(&tok, tok, &attr);
+  Type *ty = declarator(&tok, tok, basety);
+  Function *func = new_function(ty, &attr);
 
   enter_scope();
   for (Type *t = ty->params; t; t = t->next) {

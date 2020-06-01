@@ -46,7 +46,9 @@ test: $(TSTTARGET)
 
 $(TSTTARGET): $(TSTSOURCE) $(DBGTARGET)
 	$(DBGTARGET) $(TSTSOURCE) > $(TSTTARGET).s
-	$(CC) $(TSTLDFLAGS) -o $(TSTTARGET) $(TSTTARGET).s
+	echo 'int static_fn() { return 5; }' | $(CC) -xc -c -o $(TSTDIR)/tmp2.o -
+	$(CC) $(TSTLDFLAGS) -o $(TSTTARGET) $(TSTTARGET).s $(TSTDIR)/tmp2.o
+
 
 clean:
 	rm -f $(TARGET) *.o *~ tmp* $(DBGTARGET) $(DBGDIR)/*.o $(DBGDIR)/tmp* $(TSTTARGET) $(TSTDIR)/*.o $(TSTDIR)/tmp*

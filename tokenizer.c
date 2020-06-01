@@ -149,6 +149,7 @@ static bool is_keyword(Token *tok) {
     "return",
 
     "sizeof",
+    "static",
 
     "void",
     "_Bool",
