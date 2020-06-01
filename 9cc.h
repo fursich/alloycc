@@ -164,6 +164,7 @@ void codegen(Program *prog);
 typedef enum {
   TY_VOID,
   TY_BOOL,
+  TY_ENUM,
   TY_CHAR,
   TY_SHORT,
   TY_INT,
@@ -204,7 +205,6 @@ struct Member {
 
 extern Type *ty_void;
 extern Type *ty_bool;
-
 extern Type *ty_char;
 extern Type *ty_short;
 extern Type *ty_int;
@@ -216,6 +216,7 @@ Type *pointer_to(Type *base);
 Type *copy_ty(Type *ty);
 Type *func_returning(Type *ty);
 Type *array_of(Type *ty, int len);
+Type *enum_type(void);
 int size_of(Type *ty);
 bool is_integer(Type *ty);
 bool is_pointer_like(Type *ty);

@@ -47,6 +47,10 @@ Type *array_of(Type *base, int len) {
   return ty;
 }
 
+Type *enum_type(void) {
+  return new_type(TY_ENUM, 4, 4);
+}
+
 int size_of(Type *ty) {
   if (ty->kind == TY_VOID)
     error_tok(ty->ident, "void type");
@@ -55,8 +59,8 @@ int size_of(Type *ty) {
 
 bool is_integer(Type *ty) {
   TypeKind kd = ty->kind;
-  return kd == TY_BOOL || kd == TY_CHAR || kd == TY_SHORT ||
-         kd == TY_INT  || kd == TY_LONG;
+  return kd == TY_BOOL  || kd == TY_ENUM || kd == TY_CHAR ||
+         kd == TY_SHORT || kd == TY_INT  || kd == TY_LONG;
 }
 
 // types having its base type that 'behaves like' a pointer

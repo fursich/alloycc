@@ -152,6 +152,7 @@ static bool is_keyword(Token *tok) {
 
     "void",
     "_Bool",
+    "enum",
 
     "char",
     "short",
