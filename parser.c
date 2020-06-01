@@ -927,13 +927,45 @@ static Node *expr(Token **rest, Token *tok) {
   return node;
 }
 
-// assign = equality ("=" assign)?
+// Convert 'A op= B' to 'tmp = &A, *tmp = *tmp op B'
+// where tmp is a fresh pointer variable.
+static Node *to_assign(Node *binary) {
+  generate_type(binary->lhs);
+  generate_type(binary->rhs);
+
+  Var *var = new_lvar("", pointer_to(binary->lhs->ty));
+  Token *tok = binary->token;
+
+  Node *expr1 = new_node_binary(ND_ASSIGN, new_node_var(var, tok), new_node_unary(ND_ADDR, binary->lhs, tok), tok);
+  Node *expr2 = new_node_binary(ND_ASSIGN, 
+                                new_node_unary(ND_DEREF, new_node_var(var, tok), tok),
+                                new_node_binary(binary->kind,
+                                                new_node_unary(ND_DEREF, new_node_var(var, tok), tok),
+                                                binary->rhs,
+                                                tok),
+                                tok);
+  return new_node_binary(ND_COMMA, expr1, expr2, tok);
+}
+
+// assign = equality (assign_op assign)?
+// assign_op = "=" | "+=" | "-=" | "*=" | "/="
 static Node *assign(Token **rest, Token *tok) {
   Node *node = equality(&tok, tok);
-  Token *start = tok;
 
   if (consume(&tok, tok, "="))
-    node = new_node_binary(ND_ASSIGN, node, assign(&tok, tok), start);
+    return new_node_binary(ND_ASSIGN, node, assign(rest, tok), tok);
+
+  if (consume(&tok, tok, "+="))
+    return to_assign(new_node_add(node, assign(rest, tok), tok));
+
+  if (consume(&tok, tok, "-="))
+    return to_assign(new_node_sub(node, assign(rest, tok), tok));
+
+  if (consume(&tok, tok, "*="))
+    return to_assign(new_node_binary(ND_MUL, node, assign(rest, tok), tok));
+
+  if (consume(&tok, tok, "/="))
+    return to_assign(new_node_binary(ND_DIV, node, assign(rest, tok), tok));
 
   *rest = tok;
   return node;
