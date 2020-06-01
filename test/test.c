@@ -77,6 +77,9 @@ static int static_fn() { return 3; }
 
 int main() {
 
+  assert(55, ({ int j=0; for (int i=0; i<=10; i=i+1) j=j+i; j; }), "({ int j=0; for (int i=0; i<=10; i=i+1) j=j+i; j; })");
+  assert(3, ({ int i=3; int j=0; for (int i=0; i<=10; i=i+1) j=j+i; i; }), "({ int i=3; int j=0; for (int i=0; i<=10; i=i+1) j=j+i; i; })");
+
   assert(3, static_fn(), "static_fn()");
 
   assert(0, ({ enum { zero, one, two }; zero; }), "({ enum { zero, one, two }; zero; })");

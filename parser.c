@@ -855,7 +855,7 @@ static Node *while_stmt(Token **rest, Token *tok) {
   return node;
 }
 
-// for_stmt = "for" ( init; cond; inc) then_stmt
+// for_stmt = "for" "(" (expr | declaration)? ";" expr? ";" expr? ")" then_stmt
 static Node *for_stmt(Token **rest, Token *tok) {
   Node *node;
   Token *start = tok;
@@ -863,9 +863,16 @@ static Node *for_stmt(Token **rest, Token *tok) {
   tok =  skip(tok, "for");
   node = new_node(ND_FOR, start);
   tok =  skip(tok, "(");
-  if(!consume(&tok, tok, ";")) {
-    node->init = new_node_unary(ND_EXPR_STMT, expr(&tok, tok), tok);
-    tok =  skip(tok, ";");
+
+  enter_scope();
+
+  if (is_typename(tok)) {
+    node->init = declaration(&tok, tok);
+  } else {
+    if(!consume(&tok, tok, ";")) {
+      node->init = new_node_unary(ND_EXPR_STMT, expr(&tok, tok), tok);
+      tok =  skip(tok, ";");
+    }
   }
   if(!consume(&tok, tok, ";")) {
     node->cond = expr(&tok, tok);
@@ -876,6 +883,7 @@ static Node *for_stmt(Token **rest, Token *tok) {
     tok =  skip(tok, ")");
   }
   node->then = stmt(&tok, tok);
+  leave_scope();
 
   *rest = tok;
   return node;
