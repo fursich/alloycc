@@ -1074,6 +1074,7 @@ static Node *cast(Token **rest, Token *tok) {
 }
 
 // unary = ("+" | "-" | "*" | "&")? cast
+//       | ("++" | "--") unary
 //       | postfix
 static Node *unary(Token **rest, Token *tok) {
   Token *start = tok;
@@ -1086,6 +1087,11 @@ static Node *unary(Token **rest, Token *tok) {
     return new_node_unary(ND_ADDR, cast(rest, tok->next), start);
   if (equal(tok, "*"))
     return new_node_unary(ND_DEREF, cast(rest, tok->next), start);
+  if (equal(tok, "++"))
+    return to_assign(new_node_add(unary(rest, tok->next), new_node_num(1, tok), tok));
+  if (equal(tok, "--"))
+    return to_assign(new_node_sub(unary(rest, tok->next), new_node_num(1, tok), tok));
+
   return postfix(rest, tok);
 }
 
