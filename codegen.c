@@ -201,6 +201,12 @@ static void gen_expr(Node *node) {
     printf("  movzx rax, al\n");
     printf("  push rax\n");
     return;
+  case ND_BITNOT:
+    gen_expr(node->lhs);
+    printf("  pop rax\n");
+    printf("  not rax\n");
+    printf("  push rax\n");
+    return;
   case ND_FUNCALL: {
     load_args(node->args);
 

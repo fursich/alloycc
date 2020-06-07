@@ -77,6 +77,9 @@ static int static_fn() { return 3; }
 
 int main() {
 
+  assert(-1, ~0, "~0");
+  assert(0, ~-1, "~-1");
+
   assert(0, !(long)0x100000000, "!(long)0x100000000");
 
   assert(0, !1, "!1");
