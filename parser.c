@@ -1112,7 +1112,31 @@ static Node *struct_ref(Token **rest, Token *tok, Node *lhs) {
   return node;
 }
 
-// postfix = primary ("[" expr "]" | "." ident | "->" ident)*
+// Convert A++ (A--) to 'tmp = &A, *tmp = *tmp + 1 (- 1), *tmp - 1 (+ 1)'
+// where tmp is a fresh pointer variable.
+static Node *new_inc_dec(Node *node, Token *tok, int addend) {
+  generate_type(node);
+
+  Var *var = new_lvar("", pointer_to(node->ty));
+//  Token *tok = binary->token;
+
+  Node *expr1 = new_node_binary(ND_ASSIGN,
+                                new_node_var(var, tok),
+                                new_node_unary(ND_ADDR, node, tok),
+                                tok);
+  Node *expr2 = new_node_binary(ND_ASSIGN, 
+                                new_node_unary(ND_DEREF, new_node_var(var, tok), tok),
+                                new_node_add(new_node_unary(ND_DEREF, new_node_var(var, tok), tok),
+                                             new_node_num(addend, tok),
+                                             tok),
+                                tok);
+  Node *expr3 = new_node_add(new_node_unary(ND_DEREF, new_node_var(var, tok), tok),
+                             new_node_num(-addend, tok),
+                              tok);
+  return new_node_binary(ND_COMMA, expr1, new_node_binary(ND_COMMA, expr2, expr3, tok), tok);
+}
+
+// postfix = primary ("[" expr "]" | "." ident | "->" ident | "++" | "--")*
 static Node *postfix(Token **rest, Token *tok) {
 
   Token *start = tok;
@@ -1137,6 +1161,16 @@ static Node *postfix(Token **rest, Token *tok) {
       node = new_node_unary(ND_DEREF, node, start);
       node = struct_ref(&tok, tok, node);
       expect_ident(&tok, tok);
+      continue;
+    }
+
+    if (consume(&tok, tok, "++")) {
+      node = new_inc_dec(node, tok, 1);
+      continue;
+    }
+
+    if (consume(&tok, tok, "--")) {
+      node = new_inc_dec(node, tok, -1);
       continue;
     }
 
