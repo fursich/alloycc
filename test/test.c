@@ -77,6 +77,18 @@ static int static_fn() { return 3; }
 
 int main() {
 
+  assert(511, 0777, "0777");
+  assert(0, 0x0, "0x0");
+  assert(10, 0xa, "0xa");
+  assert(10, 0XA, "0XA");
+  assert(48879, 0xbeef, "0xbeef");
+  assert(48879, 0xBEEF, "0xBEEF");
+  assert(48879, 0XBEEF, "0XBEEF");
+  assert(0, 0b0, "0b0");
+  assert(1, 0b1, "0b1");
+  assert(47, 0b101111, "0b101111");
+  assert(47, 0B101111, "0B101111");
+
   assert(2, ({ int i=2; i++; }), "({ int i=2; i++; })");
   assert(2, ({ int i=2; i--; }), "({ int i=2; i--; })");
   assert(3, ({ int i=2; i++; i; }), "({ int i=2; i++; i; })");
