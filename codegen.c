@@ -180,7 +180,12 @@ static void gen_expr(Node *node) {
     store(node->ty);
     return;
   case ND_NUM:
-    printf("  push %d\n", node->val);
+    if (node->val == (int)node->val) {
+      printf("  push %lu\n", node->val);
+    } else {
+      printf("  mov rax, %lu\n", node->val);
+      printf("  push rax\n");
+    }
     return;
   case ND_CAST:
     gen_expr(node->lhs);

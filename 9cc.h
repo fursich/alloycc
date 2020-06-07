@@ -29,7 +29,7 @@ typedef struct Token Token;
 struct Token {
   TokenKind kind;
   Token *next;
-  int val;
+  long val;
   char *str;
   int len;
 
@@ -50,7 +50,7 @@ Token *skip(Token *tok, char *op);
 char *expect_ident(Token **rest, Token *tok);
 char *get_identifier(Token *tok);
 char *expect_string(Token **rest, Token *tok);
-int expect_number(Token **rest, Token *tok);
+long expect_number(Token **rest, Token *tok);
 
 Token *tokenize_file(char *path);
 extern char *current_filename;
@@ -132,7 +132,7 @@ struct Node {
   Node *args;
 
   Var *var;   // used when kind == ND_VAR
-  int val;    // used when kind == ND_NUM
+  long val;    // used when kind == ND_NUM
 };
 
 typedef struct Function Function;

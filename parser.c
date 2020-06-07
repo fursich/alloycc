@@ -191,7 +191,7 @@ static Node *new_node_var(Var *var, Token *tok) {
   return node;
 }
 
-static Node *new_node_num(int val, Token *tok) {
+static Node *new_node_num(long val, Token *tok) {
   Node *node = new_node(ND_NUM, tok);
   node->val = val;
   return node;

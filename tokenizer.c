@@ -111,10 +111,10 @@ char *expect_string(Token **rest, Token *tok) {
   return s;
 }
 
-int expect_number(Token **rest, Token *tok) {
+long expect_number(Token **rest, Token *tok) {
   if (tok->kind != TK_NUM)
     error_at(tok->str, "expected a number");
-  int val = tok->val;
+  long val = tok->val;
   *rest = tok->next;
   return val;
 }
