@@ -166,6 +166,20 @@ static void store_args(Var *params) {
   }
 }
 
+static void divmod(Node *node, char *rs, char *rd, char *res64, char *res32) {
+    if (size_of(node->ty) == 8) {
+    printf("  mov rax, %s\n", rd);
+    printf("  cqo\n");
+    printf("  idiv %s\n", rs);
+    printf("  mov %s, %s\n", rd, res64);
+  } else {
+    printf("  mov eax, %s\n", rd);
+    printf("  cdq\n");
+    printf("  idiv %s\n", rs);
+    printf("  movsxd rdi, %s\n", res32); // NOTE: result extended to 64-bit
+  }
+}
+
 static void gen_expr(Node *node) {
   printf(".loc 1 %d\n", node->token->line_no);
 
@@ -261,17 +275,10 @@ static void gen_expr(Node *node) {
     printf("  imul %s, %s\n", rd, rs);
     break;
   case ND_DIV:
-    if (size_of(node->ty) == 8) {
-      printf("  mov rax, %s\n", rd);
-      printf("  cqo\n");
-      printf("  idiv %s\n", rs);
-      printf("  mov %s, rax\n", rd);
-    } else {
-      printf("  mov eax, %s\n", rd);
-      printf("  cdq\n");
-      printf("  idiv %s\n", rs);
-      printf("  movsxd rdi, eax\n"); // result extended to 64-bit
-    }
+    divmod(node, rs, rd, "rax", "eax");
+    break;
+  case ND_MOD:
+    divmod(node, rs, rd, "rdx", "edx");
     break;
   case ND_EQ:
     printf("  cmp %s, %s\n", rd, rs);

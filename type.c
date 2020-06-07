@@ -95,6 +95,7 @@ static void set_type_for_expr(Node *node) {
     case ND_SUB:
     case ND_MUL:
     case ND_DIV:
+    case ND_MOD:
       usual_arith_conv(&node->lhs, &node->rhs);
       node->ty = node->lhs->ty;
       return;

@@ -64,6 +64,7 @@ typedef enum {
   ND_SUB,       // -
   ND_MUL,       // *
   ND_DIV,       // /
+  ND_MOD,       // %
 
   ND_ADDR,      // unary &
   ND_DEREF,     // unary *

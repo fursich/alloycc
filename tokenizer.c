@@ -201,6 +201,7 @@ static Token *read_operators(Token *cur, char *start) {
     "-=",
     "*=",
     "/=",
+    "%=",
     "++",
     "--",
   };
