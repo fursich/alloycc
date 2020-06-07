@@ -119,6 +119,9 @@ static void set_type_for_expr(Node *node) {
     case ND_MEMBER:
       node->ty = node->member->ty;
       return;
+    case ND_NOT:
+      node->ty = ty_int;
+      return;
     case ND_VAR:
       node->ty = node->var->ty;
       return;

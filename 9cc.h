@@ -67,6 +67,7 @@ typedef enum {
 
   ND_ADDR,      // unary &
   ND_DEREF,     // unary *
+  ND_NOT,       // !
 
   ND_ASSIGN,    // =
   ND_COMMA,     // ,

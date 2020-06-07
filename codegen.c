@@ -18,8 +18,8 @@ static const char *argreg64[] = { "rdi", "rsi", "rdx", "rcx", "r8", "r9" };
 static Function  *current_fn;
 
 static char *xreg(Type *ty, int idx) {
-  static char *reg64[] = {"rsi", "rdi"};
-  static char *reg32[] = {"esi", "edi"};
+  static char *reg64[] = {"rax", "rsi", "rdi"};
+  static char *reg32[] = {"eax", "esi", "edi"};
 
   if (ty->base || size_of(ty) == 8)
     return reg64[idx];
@@ -186,6 +186,16 @@ static void gen_expr(Node *node) {
     gen_expr(node->lhs);
     cast(node->lhs->ty, node->ty);
     return;
+  case ND_NOT:
+    gen_expr(node->lhs);
+    char *rs = xreg(node->lhs->ty, 0);
+
+    printf("  pop rax\n");
+    printf("  cmp %s, 0\n", rs);
+    printf("  sete al\n");
+    printf("  movzx rax, al\n");
+    printf("  push rax\n");
+    return;
   case ND_FUNCALL: {
     load_args(node->args);
 
@@ -223,8 +233,8 @@ static void gen_expr(Node *node) {
   gen_expr(node->lhs);
   gen_expr(node->rhs);
 
-  char *rs = xreg(node->lhs->ty, 0);
-  char *rd = xreg(node->lhs->ty, 1);
+  char *rs = xreg(node->lhs->ty, 1);
+  char *rd = xreg(node->lhs->ty, 2);
 
   printf("  pop rsi\n");  // rhs
   printf("  pop rdi\n");  // lhs

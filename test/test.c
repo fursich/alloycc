@@ -77,6 +77,14 @@ static int static_fn() { return 3; }
 
 int main() {
 
+  assert(0, !1, "!1");
+  assert(0, !2, "!2");
+  assert(1, !0, "!0");
+  assert(1, !(char)0, "!(char)0");
+  assert(0, !(long)3, "!(long)3");
+  assert(4, sizeof(!(char)0), "sizeof(!(char)0)");
+  assert(4, sizeof(!(long)0), "sizeof(!(long)0)");
+
   assert(511, 0777, "0777");
   assert(0, 0x0, "0x0");
   assert(10, 0xa, "0xa");
