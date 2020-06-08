@@ -88,6 +88,7 @@ typedef enum {
   ND_IF,        // "if"
   ND_FOR,       // "for" or "while"
   ND_BREAK,     // "break"
+  ND_CONTINUE,  // "continue"
   ND_RETURN,    // "return"
   ND_BLOCK,     // compound statement
   ND_EXPR_STMT, // statement with expression (w/o return)
