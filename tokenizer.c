@@ -148,7 +148,12 @@ static bool is_keyword(Token *tok) {
     "for",
     "break",
     "continue",
+
     "goto",
+    "switch",
+    "case",
+    "default",
+
     "return",
 
     "sizeof",

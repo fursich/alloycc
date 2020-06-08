@@ -42,7 +42,12 @@ static VarScope *var_scope;
 static TagScope *tag_scope;
 
 static int scope_depth;
+
+// Points to the function object the parser is currently parsing.
 static Var *current_fn;
+// Points to a node representing a switch if we are parsing
+// a switch statement. Otherwise, NULL.
+static Node *current_switch;
 
 static void enter_scope() {
   scope_depth++;
@@ -276,8 +281,13 @@ static Node *stmt(Token **rest, Token *tok);
 static Node *if_stmt(Token **rest, Token *tok);
 static Node *while_stmt(Token **rest, Token *tok);
 static Node *for_stmt(Token **rest, Token *tok);
+
 static Node *goto_stmt(Token **rest, Token *tok);
+static Node *switch_stmt(Token **rest, Token *tok);
+static Node *case_labeled_stmt(Token **rest, Token *tok);
+static Node *default_labeled_stmt(Token **rest, Token *tok);
 static Node *labeled_stmt(Token **rest, Token *tok);
+
 static Node *return_stmt(Token **rest, Token *tok);
 static Node *expr_stmt(Token **rest, Token *tok);
 
@@ -827,21 +837,39 @@ static Node *block_stmt(Token **rest, Token *tok) {
   return node;
 }
 
-// stmt = if_stmt
-//      | while_stmt
-//      | for_stmt
+// stmt = if-stmt
+//      | while-stmt
+//      | switch-stmt
+//      | case-labeled-stmt
+//      | default-labeled-stmt
+//      | for-stmt
 //      | "break" ";"
 //      | "continue" ";"
 //      | goto-stmt
 //      | labeled-stmt
-//      | return_stmt
-//      | { block_stmt }
-//      | expr_stmt
+//      | return-stmt
+//      | { block-stmt }
+//      | expr-stmt
 static Node *stmt(Token **rest, Token *tok) {
   Node *node;
 
   if (equal(tok, "if")) {
     node = if_stmt(rest, tok);
+    return node;
+  }
+
+  if (equal(tok, "switch")) {
+    node = switch_stmt(rest, tok);
+    return node;
+  }
+
+  if (equal(tok, "case")) {
+    node = case_labeled_stmt(rest, tok);
+    return node;
+  }
+
+  if (equal(tok, "default")) {
+    node = default_labeled_stmt(rest, tok);
     return node;
   }
 
@@ -902,6 +930,54 @@ static Node *if_stmt(Token **rest, Token *tok) {
     node->els = stmt(&tok, tok);
 
   *rest = tok;
+  return node;
+}
+
+// switch_stmt = "switch" "(" expr ")" stmt
+static Node *switch_stmt(Token **rest, Token *tok) {
+  Node *node = new_node(ND_SWITCH, tok);
+
+  tok =  skip(tok, "switch");
+  tok =  skip(tok, "(");
+  node->cond = expr(&tok, tok);
+  tok =  skip(tok, ")");
+
+  Node *prev_sw = current_switch;
+  current_switch = node;
+  node->then = stmt(rest, tok);
+  current_switch = prev_sw;
+  return node;
+}
+
+// case-labeled-stmt = "case" num ":" stmt
+static Node *case_labeled_stmt(Token **rest, Token *tok) {
+  if (!current_switch)
+    error_tok(tok, "stray case");
+
+  Node *node = new_node(ND_CASE, tok);
+
+  tok =  skip(tok, "case");
+  int val = expect_number(&tok, tok);
+  tok =  skip(tok, ":");
+  node->lhs = stmt(rest, tok);
+  node->val = val;
+  node->case_next = current_switch->case_next;
+  current_switch->case_next = node;
+  return node;
+}
+
+// default-labeled-stmt = "default" ":" stmt
+static Node *default_labeled_stmt(Token **rest, Token *tok) {
+  if (!current_switch)
+    error_tok(tok, "stray case");
+
+  Node *node = new_node(ND_CASE, tok);
+
+  tok =  skip(tok, "default");
+  tok =  skip(tok, ":");
+  node->lhs = stmt(rest, tok);
+
+  current_switch->default_case = node;
   return node;
 }
 
