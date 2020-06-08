@@ -124,6 +124,8 @@ static void set_type_for_expr(Node *node) {
       node->ty = node->member->ty;
       return;
     case ND_NOT:
+    case ND_LOGOR:
+    case ND_LOGAND:
       node->ty = ty_int;
       return;
     case ND_BITNOT:
