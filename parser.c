@@ -770,6 +770,14 @@ static Type *func_params(Token **rest, Token *tok) {
     Token *start = tok;
     Type *basety = typespec(&tok, tok, NULL);
     Type *ty = declarator(&tok, tok, basety);
+    
+    // "array of T" is converted to "pointer of T" only in parameter
+    // context. example: *argv[] is converted to **argv by this.
+    if (ty->kind == TY_ARRAY) {
+      Token *name = ty->ident;
+      ty = pointer_to(ty->base);
+      ty->ident = name;
+    }
     cur = cur->next = copy_ty(ty);
   }
 

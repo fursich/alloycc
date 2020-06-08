@@ -75,7 +75,11 @@ _Bool bool_fn_sub(_Bool x) { return x - 1; }
 
 static int static_fn() { return 3; }
 
+int param_decay(int x[]) { return x[0]; }
+
 int main() {
+
+  assert(3, ({ int x[2]; x[0]=3; param_decay(x); }), "({ int x[2]; x[0]=3; param_decay(x); })");
 
   assert(8, sizeof(int(*)[10]), "sizeof(int(*)[10])");
   assert(8, sizeof(int(*)[][10]), "sizeof(int(*)[][10])");
