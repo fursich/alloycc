@@ -276,6 +276,8 @@ static Node *stmt(Token **rest, Token *tok);
 static Node *if_stmt(Token **rest, Token *tok);
 static Node *while_stmt(Token **rest, Token *tok);
 static Node *for_stmt(Token **rest, Token *tok);
+static Node *goto_stmt(Token **rest, Token *tok);
+static Node *labeled_stmt(Token **rest, Token *tok);
 static Node *return_stmt(Token **rest, Token *tok);
 static Node *expr_stmt(Token **rest, Token *tok);
 
@@ -830,6 +832,8 @@ static Node *block_stmt(Token **rest, Token *tok) {
 //      | for_stmt
 //      | "break" ";"
 //      | "continue" ";"
+//      | goto-stmt
+//      | labeled-stmt
 //      | return_stmt
 //      | { block_stmt }
 //      | expr_stmt
@@ -859,6 +863,14 @@ static Node *stmt(Token **rest, Token *tok) {
   if (equal(tok, "continue")) {
     *rest = skip(tok->next, ";");
     return new_node(ND_CONTINUE, tok);
+  }
+
+  if (equal(tok, "goto")) {
+    return goto_stmt(rest, tok);
+  }
+
+  if (tok->kind == TK_IDENT && equal(tok->next, ":")) {
+    return labeled_stmt(rest, tok);
   }
 
   if (equal(tok, "return")) {
@@ -940,6 +952,26 @@ static Node *for_stmt(Token **rest, Token *tok) {
   leave_scope();
 
   *rest = tok;
+  return node;
+}
+
+// goto-stmt = "goto" ident ";"
+static Node *goto_stmt(Token **rest, Token *tok) {
+  Node *node = new_node(ND_GOTO, tok);
+
+  tok =  skip(tok, "goto");
+  node->label_name = expect_ident(&tok, tok);
+  *rest =  skip(tok, ";");
+  return node;
+}
+
+// labeled-stmt = ident ":" stmt
+static Node *labeled_stmt(Token **rest, Token *tok) {
+  Node *node = new_node(ND_LABEL, tok);
+
+  node->label_name = expect_ident(&tok, tok);
+  tok =  skip(tok, ":");
+  node->lhs = stmt(rest, tok);
   return node;
 }
 

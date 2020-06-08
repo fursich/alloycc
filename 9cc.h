@@ -89,6 +89,8 @@ typedef enum {
   ND_FOR,       // "for" or "while"
   ND_BREAK,     // "break"
   ND_CONTINUE,  // "continue"
+  ND_GOTO,      // "goto"
+  ND_LABEL,     // labeled statement
   ND_RETURN,    // "return"
   ND_BLOCK,     // compound statement
   ND_EXPR_STMT, // statement with expression (w/o return)
@@ -140,6 +142,9 @@ struct Node {
   char *funcname;
   Type *func_ty;
   Node *args;
+
+  // Goto or labeled statement
+  char *label_name;
 
   Var *var;   // used when kind == ND_VAR
   long val;    // used when kind == ND_NUM
