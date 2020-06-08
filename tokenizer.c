@@ -204,6 +204,9 @@ static Token *read_operators(Token *cur, char *start) {
     "%=",
     "++",
     "--",
+    "&=",
+    "|=",
+    "^=",
   };
 
   /* Reserved Symbol: Multi-letter punctuators */

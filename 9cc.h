@@ -71,6 +71,10 @@ typedef enum {
   ND_NOT,       // !
   ND_BITNOT,    // ~
 
+  ND_BITAND,    // &
+  ND_BITOR,     // |
+  ND_BITXOR,    // ^
+
   ND_ASSIGN,    // =
   ND_COMMA,     // ,
   ND_MEMBER,    // . (struct member)

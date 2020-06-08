@@ -280,6 +280,15 @@ static void gen_expr(Node *node) {
   case ND_MOD:
     divmod(node, rs, rd, "rdx", "edx");
     break;
+  case ND_BITAND:
+    printf("  and %s, %s\n", rd, rs);
+    break;
+  case ND_BITOR:
+    printf("  or %s, %s\n", rd, rs);
+    break;
+  case ND_BITXOR:
+    printf("  xor %s, %s\n", rd, rs);
+    break;
   case ND_EQ:
     printf("  cmp %s, %s\n", rd, rs);
     printf("  sete al\n");
