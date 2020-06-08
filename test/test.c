@@ -77,6 +77,9 @@ static int static_fn() { return 3; }
 
 int main() {
 
+  assert(8, sizeof(int(*)[10]), "sizeof(int(*)[10])");
+  assert(8, sizeof(int(*)[][10]), "sizeof(int(*)[][10])");
+
   assert(1, 0||1, "0||1");
   assert(1, 0||(2-2)||5, "0||(2-2)||5");
   assert(0, 0||0, "0||0");

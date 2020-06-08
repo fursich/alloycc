@@ -54,6 +54,8 @@ Type *enum_type(void) {
 int size_of(Type *ty) {
   if (ty->kind == TY_VOID)
     error_tok(ty->ident, "void type");
+  if (ty->is_incomplete)
+    error_tok(ty->ident, "incomplete type");
   return ty->size;
 }
 

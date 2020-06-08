@@ -189,8 +189,9 @@ typedef enum {
 
 struct Type {
   TypeKind kind;
-  int size;       // used as sizeof() value
-  int align;      // alignment
+  int size;           // used as sizeof() value
+  int align;          // alignment
+  bool is_incomplete; // incomplete type
   Type *base;
 
   // used for declaration
@@ -211,6 +212,7 @@ struct Type {
 struct Member {
   Member *next;
   Type *ty;
+  Token *tok; // for error message
   char *name;
   int offset;
 };

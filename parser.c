@@ -261,6 +261,7 @@ static bool is_typename(Token *tok);
 static Type *typespec(Token **rest, Token *tok, VarAttr *attr);
 static void register_enum_list(Token **rest, Token *tok, Type *ty);
 static Type *enum_specifier(Token **rest, Token *tok);
+static Type *type_suffix(Token **rest, Token *tok, Type *ty);
 static Type *declarator(Token **rest, Token *tok, Type *base);
 static Node *declaration(Token **rest, Token *tok);
 
@@ -454,8 +455,24 @@ static Type *typespec(Token **rest, Token *tok, VarAttr *attr) {
   return ty;
 }
 
+// array-dimensions = "[" num? "]" type-suffix
+static Type *array_dimensions(Token **rest, Token *tok, Type *ty) {
+  tok = skip(tok, "[");
+  if (equal(tok, "]")) {
+    ty = type_suffix(rest, tok->next, ty);
+    ty = array_of(ty, 0);
+    ty->is_incomplete = true;
+    return ty;
+  }
+
+  int sz = expect_number(&tok, tok);
+  tok =  skip(tok, "]");
+  ty = type_suffix(rest, tok, ty);  // first, define rightmost sub-array's size
+  return array_of(ty, sz);          // this array composes of sz length of subarrays above
+}
+
 // type-suffix = "(" func-params ")"
-//             | "[" num "]" type-suffix
+//             | array-dimensions
 //             | ε
 static Type *type_suffix(Token **rest, Token *tok, Type *ty) {
   if (consume(&tok, tok, "(")) {
@@ -466,14 +483,9 @@ static Type *type_suffix(Token **rest, Token *tok, Type *ty) {
     *rest = tok;
     return ty;
   }
-  if (consume(&tok, tok, "[")) {
-    int sz = expect_number(&tok, tok);
-    tok =  skip(tok, "]");
-    ty = type_suffix(&tok, tok, ty);  // first, define rightmost sub-array's size
-    ty = array_of(ty, sz); // this array composes of sz length of subarrays above
-    *rest = tok;
-    return ty;
-  }
+
+  if (equal(tok, "["))
+    return array_dimensions(rest, tok, ty);
 
   *rest = tok;
   return ty;
