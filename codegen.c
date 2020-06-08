@@ -11,6 +11,7 @@ static void load(Type *ty);
 static void store(Type *ty);
 
 static int labelseq = 1;
+static int brkseq;
 static const char *argreg8[]  = { "dil", "sil", "dl", "cl", "r8b", "r9b" };
 static const char *argreg16[] = { "di",  "si",  "dx", "cx", "r8w", "r9w" };
 static const char *argreg32[] = { "edi", "esi", "edx", "ecx", "e8", "e9" };
@@ -381,6 +382,8 @@ static void gen_stmt(Node *node) {
   }
   case ND_FOR: {
     int seq = labelseq++;
+    int prevbrk = brkseq;
+    brkseq = seq;
 
     if (node->init)
       gen_stmt(node->init);
@@ -389,15 +392,22 @@ static void gen_stmt(Node *node) {
       gen_expr(node->cond);
       printf("  pop rax\n");
       printf("  cmp rax, 0\n");
-      printf("  je .L.end.%d\n", seq);
+      printf("  je .L.break.%d\n", seq);
     }
     gen_stmt(node->then);
     if (node->inc)
       gen_stmt(node->inc);
     printf("  jmp .L.begin.%d\n", seq);
-    printf(".L.end.%d:\n", seq);
+    printf(".L.break.%d:\n", seq);
+
+    brkseq = prevbrk;
     return;
   }
+  case ND_BREAK:
+    if (brkseq == 0)
+      error_tok(node->token, "stray break");
+    printf("  jmp .L.break.%d\n", brkseq);
+    return;
   case ND_RETURN:
     gen_expr(node->lhs);
     printf("  pop rax\n");
