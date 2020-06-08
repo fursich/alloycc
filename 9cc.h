@@ -231,6 +231,7 @@ Type *copy_ty(Type *ty);
 Type *func_returning(Type *ty);
 Type *array_of(Type *ty, int len);
 Type *enum_type(void);
+Type *struct_type(void);
 int size_of(Type *ty);
 bool is_integer(Type *ty);
 bool is_pointer_like(Type *ty);

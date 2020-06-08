@@ -677,23 +677,35 @@ static Type *struct_union_decl(Token **rest, Token *tok) {
     tag_name = expect_ident(&tok, tok);
 
   if (tag_name && !equal(tok, "{")) {
-    TagScope *sc = lookup_tag(tag_name);
-    if (!sc)
-      error_tok(start, "unknown struct type");
     *rest = tok;
-    return sc->ty;
+
+    TagScope *sc = lookup_tag(tag_name);
+    if (sc)
+      return sc->ty;
+
+    Type *ty = struct_type();
+    ty->is_incomplete = true;
+    push_tag_scope(tag_name, ty);
+    return ty;
   }
 
   tok =  skip(tok, "{");
-  Type *ty = new_type(TY_STRUCT, 0, 0);
+  Type *ty = struct_type();
   ty->members = struct_union_members(&tok, tok);
-  tok =  skip(tok, "}");
+  *rest =  skip(tok, "}");
 
-  // Register the struct type if name is given
-  if (tag_name)
+  if (tag_name) {
+    // If this a redefinition, overwrite the previous type.
+    // Otherwise register the struct type.
+    TagScope *sc = lookup_tag(tag_name);
+    if (sc && sc->depth == scope_depth) {
+      *sc->ty = *ty;
+      return sc->ty;
+    }
+
     push_tag_scope(tag_name, ty);
+  }
 
-  *rest = tok;
   return ty;
 }
 
