@@ -300,6 +300,7 @@ static Node *bitxor(Token **rest, Token *tok);
 static Node *bitand(Token **rest, Token *tok);
 static Node *equality(Token **rest, Token *tok);
 static Node *relational(Token **rest, Token *tok);
+static Node *shift(Token **rest, Token *tok);
 static Node *add(Token **rest, Token *tok);
 static Node *mul(Token **rest, Token *tok);
 static Node *cast(Token **rest, Token *tok);
@@ -1110,7 +1111,8 @@ static Node *to_assign(Node *binary) {
 }
 
 // assign = logor (assign_op assign)?
-// assign_op = "=" | "+=" | "-=" | "*=" | "/=" | "%=" | "&=" \ "|=" | "^="
+// assign_op =  "=" | "+=" | "-=" | "*=" | "/=" | "%=" | "&="
+//           | "|=" | "^=" | "<<=" | ">>="
 static Node *assign(Token **rest, Token *tok) {
   Node *node = logor(&tok, tok);
 
@@ -1140,6 +1142,12 @@ static Node *assign(Token **rest, Token *tok) {
 
   if (consume(&tok, tok, "^="))
     return to_assign(new_node_binary(ND_BITXOR, node, assign(rest, tok), tok));
+
+  if (consume(&tok, tok, "<<="))
+    return to_assign(new_node_binary(ND_SHL, node, assign(rest, tok), tok));
+
+  if (consume(&tok, tok, ">>="))
+    return to_assign(new_node_binary(ND_SHR, node, assign(rest, tok), tok));
 
   *rest = tok;
   return node;
@@ -1220,26 +1228,47 @@ static Node *equality(Token **rest, Token *tok) {
   }
 }
 
-// relational = add ("<" add | "<=" add | ">" add | ">=" add)*
+// relational = shift ("<" shift | "<=" shift | ">" shift | ">=" shift)*
 static Node *relational(Token **rest, Token *tok) {
-  Node *node = add(&tok, tok);
+  Node *node = shift(&tok, tok);
   Token *start = tok;
 
   for(;;) {
     if (consume(&tok, tok, "<")) {
-      node = new_node_binary(ND_LT, node, add(&tok, tok), start);
+      node = new_node_binary(ND_LT, node, shift(&tok, tok), start);
       continue;
     }
     if (consume(&tok, tok, "<=")) {
-      node = new_node_binary(ND_LE, node, add(&tok, tok), start);
+      node = new_node_binary(ND_LE, node, shift(&tok, tok), start);
       continue;
     }
     if (consume(&tok, tok, ">")) {
-      node = new_node_binary(ND_LT, add(&tok, tok), node, start);
+      node = new_node_binary(ND_LT, shift(&tok, tok), node, start);
       continue;
     }
     if (consume(&tok, tok, ">=")) {
-      node = new_node_binary(ND_LE, add(&tok, tok), node, start);
+      node = new_node_binary(ND_LE, shift(&tok, tok), node, start);
+      continue;
+    }
+
+    *rest = tok;
+    return node;
+  }
+}
+
+// shift = add ("<<" add | ">>" add)*
+static Node *shift(Token **rest, Token *tok) {
+  Node *node = add(&tok, tok);
+
+  for(;;) {
+    Token *start = tok;
+
+    if (consume(&tok, tok, "<<")) {
+      node = new_node_binary(ND_SHL, node, add(&tok, tok), start);
+      continue;
+    }
+    if (consume(&tok, tok, ">>")) {
+      node = new_node_binary(ND_SHR, node, add(&tok, tok), start);
       continue;
     }
 

@@ -199,7 +199,11 @@ static int from_hex(char c) {
 }
 
 static Token *read_operators(Token *cur, char *start) {
+  // longer keywords must come earlier
   static const char *multi_letter_ops[] = {
+    "<<=",
+    ">>=",
+
     "==",
     "!=",
     ">=",
@@ -217,6 +221,8 @@ static Token *read_operators(Token *cur, char *start) {
     "^=",
     "&&",
     "||",
+    "<<",
+    ">>",
   };
 
   /* Reserved Symbol: Multi-letter punctuators */

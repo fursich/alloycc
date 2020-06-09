@@ -79,6 +79,19 @@ int param_decay(int x[]) { return x[0]; }
 
 int main() {
 
+  assert(1, 1<<0, "1<<0");
+  assert(8, 1<<3, "1<<3");
+  assert(10, 5<<1, "5<<1");
+  assert(2, 5>>1, "5>>1");
+  assert(-1, -1>>1, "-1>>1");
+  assert(1, ({ int i=1; i<<=0; i; }), "({ int i=1; i<<=0; i; })");
+  assert(8, ({ int i=1; i<<=3; i; }), "({ int i=1; i<<=3; i; })");
+  assert(10, ({ int i=5; i<<=1; i; }), "({ int i=5; i<<=1; i; })");
+  assert(2, ({ int i=5; i>>=1; i; }), "({ int i=5; i>>=1; i; })");
+  assert(-1, -1, "-1");
+  assert(-1, ({ int i=-1; i; }), "({ int i=-1; i; })");
+  assert(-1, ({ int i=-1; i>>=1; i; }), "({ int i=-1; i>>=1; i; })");
+
   assert(5, ({ int i=0; switch(0) { case 0:i=5;break; case 1:i=6;break; case 2:i=7;break; } i; }), "({ int i=0; switch(0) { case 0:i=5;break; case 1:i=6;break; case 2:i=7;break; } i; })");
   assert(6, ({ int i=0; switch(1) { case 0:i=5;break; case 1:i=6;break; case 2:i=7;break; } i; }), "({ int i=0; switch(1) { case 0:i=5;break; case 1:i=6;break; case 2:i=7;break; } i; })");
   assert(7, ({ int i=0; switch(2) { case 0:i=5;break; case 1:i=6;break; case 2:i=7;break; } i; }), "({ int i=0; switch(2) { case 0:i=5;break; case 1:i=6;break; case 2:i=7;break; } i; })");

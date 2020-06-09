@@ -347,6 +347,14 @@ static void gen_expr(Node *node) {
     printf("  setle al\n");
     printf("  movzx %s, al\n", rd);
     break;
+  case ND_SHL:
+    printf("  mov rcx, rsi\n");   // make sure that rcx contains all possible source bits from rs (rsi / esi)
+    printf("  shl %s, cl\n", rd);
+    break;
+  case ND_SHR:
+    printf("  mov rcx, rsi\n");   // make sure that rcx contains all possible source bits from rs (rsi / esi)
+    printf("  sar %s, cl\n", rd);
+    break;
   default:
     error_tok(node->token, "invalid expression");
   }
