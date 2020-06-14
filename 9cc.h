@@ -80,6 +80,7 @@ typedef enum {
   ND_SHR,       // >>
 
   ND_ASSIGN,    // =
+  ND_COND,      // ? :
   ND_COMMA,     // ,
   ND_MEMBER,    // . (struct member)
   ND_EQ,        // ==

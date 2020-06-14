@@ -56,6 +56,8 @@ Type *struct_type(void) {
 }
 
 int size_of(Type *ty) {
+  // FIXME: let abstract-decorator assign ty->ident (token for error handling)
+  // (for instance, sizeof(void) causes segmention falut, since ty->indent is NULL)
   if (ty->kind == TY_VOID)
     error_tok(ty->ident, "void type");
   if (ty->is_incomplete)
@@ -141,6 +143,14 @@ static void set_type_for_expr(Node *node) {
       return;
     case ND_VAR:
       node->ty = node->var->ty;
+      return;
+    case ND_COND:
+      if (node->then->ty->kind == TY_VOID || node->els->ty->kind == TY_VOID) {
+        node->ty = ty_void;
+      } else {
+        usual_arith_conv(&node->then, &node->els);
+        node->ty = node->then->ty;
+      }
       return;
     case ND_ADDR:
       if (node->lhs->ty->kind == TY_ARRAY)

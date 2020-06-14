@@ -78,6 +78,18 @@ static int static_fn() { return 3; }
 int param_decay(int x[]) { return x[0]; }
 
 int main() {
+  assert(2, 0?1:2, "0?1:2");
+  assert(1, 1?1:2, "1?1:2");
+  assert(-1, 0?-2:-1, "0?-2:-1");
+  assert(-2, 1?-2:-1, "1?-2:-1");
+  assert(4, sizeof(0?1:2), "sizeof(0?1:2)");
+  assert(8, sizeof(0?(long)1:(short)2), "sizeof(0?(long)1:(short)2)");
+  assert(-1, 0?(long)-2:-1, "0?(long)-2:-1");
+  assert(-1, 0?-2:(long)-1, "0?-2:(long)-1");
+  assert(-2, 1?(long)-2:-1, "1?(long)-2:-1");
+  assert(-2, 1?-2:(long)-1, "1?-2:(long)-1");
+
+  1 ? -2 : (void)-1;
 
   assert(1, 1<<0, "1<<0");
   assert(8, 1<<3, "1<<3");
