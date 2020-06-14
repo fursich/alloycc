@@ -292,6 +292,7 @@ static Node *return_stmt(Token **rest, Token *tok);
 static Node *expr_stmt(Token **rest, Token *tok);
 
 static Node *expr(Token **rest, Token *tok);
+static long const_expr(Token **rest, Token *tok);
 static Node *assign(Token **rest, Token *tok);
 static Node *conditional(Token **rest, Token *tok);
 static Node *logor(Token **rest, Token *tok);
@@ -469,7 +470,7 @@ static Type *typespec(Token **rest, Token *tok, VarAttr *attr) {
   return ty;
 }
 
-// array-dimensions = "[" num? "]" type-suffix
+// array-dimensions = "[" const-expr? "]" type-suffix
 static Type *array_dimensions(Token **rest, Token *tok, Type *ty) {
   tok = skip(tok, "[");
   if (equal(tok, "]")) {
@@ -479,7 +480,7 @@ static Type *array_dimensions(Token **rest, Token *tok, Type *ty) {
     return ty;
   }
 
-  int sz = expect_number(&tok, tok);
+  int sz = const_expr(&tok, tok);
   tok =  skip(tok, "]");
   ty = type_suffix(rest, tok, ty);  // first, define rightmost sub-array's size
   return array_of(ty, sz);          // this array composes of sz length of subarrays above
@@ -550,7 +551,7 @@ static Type *typename(Token **rest, Token *tok) {
   return abstract_declarator(rest, tok, ty);
 }
 
-// enum-list      = ident ("=" num)? ("'" ident ("=" num)?)*
+// enum-list = ident ("=" const-expr)? ("'" ident ("=" const-expr)?)*
 static void register_enum_list(Token **rest, Token *tok, Type *ty) {
   int i = 0;
   int val = 0;
@@ -562,7 +563,7 @@ static void register_enum_list(Token **rest, Token *tok, Type *ty) {
     char *tag_name = expect_ident(&tok, tok);
 
     if (equal(tok, "="))
-      val = expect_number(&tok, tok->next);
+      val = const_expr(&tok, tok->next);
 
     VarScope *sc = push_scope(tag_name);
     sc->enum_ty = ty;
@@ -951,7 +952,7 @@ static Node *switch_stmt(Token **rest, Token *tok) {
   return node;
 }
 
-// case-labeled-stmt = "case" num ":" stmt
+// case-labeled-stmt = "case" const-expr ":" stmt
 static Node *case_labeled_stmt(Token **rest, Token *tok) {
   if (!current_switch)
     error_tok(tok, "stray case");
@@ -959,7 +960,7 @@ static Node *case_labeled_stmt(Token **rest, Token *tok) {
   Node *node = new_node(ND_CASE, tok);
 
   tok =  skip(tok, "case");
-  int val = expect_number(&tok, tok);
+  int val = const_expr(&tok, tok);
   tok =  skip(tok, ":");
   node->lhs = stmt(rest, tok);
   node->val = val;
@@ -1089,6 +1090,78 @@ static Node *expr(Token **rest, Token *tok) {
 
   *rest = tok;
   return node;
+}
+
+// evaluate a given node as a constant expression
+static long eval(Node *node) {
+  generate_type(node);
+  
+  switch (node->kind) {
+    case ND_ADD:
+      return eval(node->lhs) + eval(node->rhs);
+    case ND_SUB:
+      return eval(node->lhs) - eval(node->rhs);
+    case ND_MUL:
+      return eval(node->lhs) * eval(node->rhs);
+    case ND_DIV:
+      return eval(node->lhs) / eval(node->rhs);
+    case ND_MOD:
+      return eval(node->lhs) % eval(node->rhs);
+
+    case ND_BITAND:
+      return eval(node->lhs) & eval(node->rhs);
+    case ND_BITOR:
+      return eval(node->lhs) | eval(node->rhs);
+    case ND_BITXOR:
+      return eval(node->lhs) ^ eval(node->rhs);
+    case ND_LOGAND:
+      return eval(node->lhs) && eval(node->rhs);
+    case ND_LOGOR:
+      return eval(node->lhs) || eval(node->rhs);
+
+    case ND_SHL:
+      return eval(node->lhs) << eval(node->rhs);
+    case ND_SHR:
+      return eval(node->lhs) >> eval(node->rhs);
+
+    case ND_EQ:
+      return eval(node->lhs) == eval(node->rhs);
+    case ND_NE:
+      return eval(node->lhs) != eval(node->rhs);
+    case ND_LT:
+      return eval(node->lhs) < eval(node->rhs);
+    case ND_LE:
+      return eval(node->lhs) <= eval(node->rhs);
+
+    case ND_NOT:
+      return !eval(node->lhs);
+    case ND_BITNOT:
+      return ~eval(node->lhs);
+
+    case ND_COND:
+      return eval(node->cond) ? eval(node->then) : eval(node->els);
+    case ND_COMMA:
+      return eval(node->rhs);
+
+    case ND_CAST:
+      if (is_integer(node->ty)) {
+        switch(size_of(node->ty)) {
+        case 1: return (char)eval(node->lhs);
+        case 2: return (short)eval(node->lhs);
+        case 4: return (int)eval(node->lhs);
+        }
+      }
+      return eval(node->lhs);
+    case ND_NUM:
+      return node->val;
+  }
+
+  error_tok(node->token, "not a constant expression");
+}
+
+static long const_expr(Token **rest, Token *tok) {
+  Node *node = conditional(rest, tok);
+  return eval(node);
 }
 
 // Convert 'A op= B' to 'tmp = &A, *tmp = *tmp op B'
