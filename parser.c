@@ -1221,6 +1221,12 @@ static Node *stmt(Token **rest, Token *tok) {
     return goto_stmt(rest, tok);
   }
 
+  if (equal(tok, ";")) {
+    Node *node = new_node(ND_BLOCK, tok);
+    *rest = tok->next;
+    return node;
+  }
+
   if (tok->kind == TK_IDENT && equal(tok->next, ":")) {
     return labeled_stmt(rest, tok);
   }

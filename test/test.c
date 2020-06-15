@@ -113,6 +113,8 @@ int param_decay(int x[]) { return x[0]; }
 
 int main() {
 
+  ;
+
   ext1 = 5;
   assert(5, ext1, "ext1");
 
