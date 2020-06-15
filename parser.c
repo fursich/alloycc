@@ -56,6 +56,7 @@ typedef struct InitDesg InitDesg;
 struct InitDesg {
   InitDesg *next;
   int idx;
+  Member *member;
   Var *var;
 };
 
@@ -751,7 +752,39 @@ static Initializer *array_initializer(Token **rest, Token *tok, Type *ty) {
   return init;
 }
 
-// initializer = string-initializer | array-initializer | assign
+// struct-initializer = "{" initializer ("," initializer)* "}"
+static Initializer *struct_initializer(Token **rest, Token *tok, Type *ty) {
+  if (!equal(tok, "{")) {
+    Token *tok2;
+    Node *expr = assign(&tok2, tok);
+    generate_type(expr);
+    if (expr->ty->kind == TY_STRUCT) {
+      Initializer *init = new_init(ty, 0, expr, tok);
+      *rest = tok2;
+      return init;
+    }
+  }
+
+  int len = 0;
+  for (Member *mem = ty->members; mem; mem = mem->next)
+    len++;
+
+  Initializer *init = new_init(ty, len, NULL, tok);
+  tok = skip(tok, "{");
+
+  int i = 0;
+  for (Member *mem = ty->members; mem && !equal(tok, "}"); mem = mem->next, i++) {
+    if (i > 0)
+      tok = skip(tok, ",");
+    init->children[i] = initializer(&tok, tok, mem->ty);
+  }
+
+  *rest = skip_end(tok);
+  return init;
+}
+
+// initializer = string-initializer | array-initializer | struct-initializer
+//             | assign
 static Initializer *initializer(Token **rest, Token *tok, Type *ty) {
   if (ty->kind == TY_ARRAY && ty->base->kind == TY_CHAR && tok->kind == TK_STR)
     return string_initializer(rest, tok, ty);
@@ -759,12 +792,21 @@ static Initializer *initializer(Token **rest, Token *tok, Type *ty) {
   if (ty->kind == TY_ARRAY)
     return array_initializer(rest, tok, ty);
 
+  if (ty->kind == TY_STRUCT)
+    return struct_initializer(rest, tok, ty);
+
   return new_init(ty, 0, assign(rest, tok), tok);
 }
 
 Node *init_desg_expr(InitDesg *desg, Token *tok) {
   if (desg->var)
     return new_node_var(desg->var, tok);
+
+  if (desg->member) {
+    Node *node = new_node_unary(ND_MEMBER, init_desg_expr(desg->next, tok), tok);
+    node->member = desg->member;
+    return node;
+  }
 
   Node *lhs = init_desg_expr(desg->next, tok);
   Node *rhs = new_node_num(desg->idx, tok);
@@ -775,11 +817,25 @@ Node *init_desg_expr(InitDesg *desg, Token *tok) {
 static Node *create_lvar_init(Initializer *init, Type *ty, InitDesg *desg, Token *tok) {
   if (ty->kind == TY_ARRAY) {
     Node *node = new_node(ND_NULL_EXPR, tok);
-    int sz = size_of(ty->base);
+
+    int sz = size_of(ty->base); // FIXME: unsed variable?
     for (int i = 0; i < ty->array_len; i++) {
       InitDesg desg2 = {desg, i};
       Initializer *child = init ? init->children[i] : NULL;
       Node *rhs = create_lvar_init(child, ty->base, &desg2, tok);
+      node = new_node_binary(ND_COMMA, node, rhs, tok);
+    }
+    return node;
+  }
+
+  if (ty->kind == TY_STRUCT && (!init || init->len)) {
+    Node *node = new_node(ND_NULL_EXPR, tok);
+
+    int i = 0;
+    for (Member *mem = ty->members; mem; mem = mem->next, i++) {
+      InitDesg desg2 = {desg, 0, mem};
+      Initializer *child = init ? init->children[i] : NULL;
+      Node *rhs = create_lvar_init(child, mem->ty, &desg2, tok);
       node = new_node_binary(ND_COMMA, node, rhs, tok);
     }
     return node;
@@ -792,7 +848,7 @@ static Node *create_lvar_init(Initializer *init, Type *ty, InitDesg *desg, Token
 
 static Node *lvar_initializer(Token **rest, Token *tok, Var *var) {
   Initializer *init = initializer(rest, tok, var->ty);
-  InitDesg desg = {NULL, 0, var};
+  InitDesg desg = {NULL, 0, NULL, var};
   return create_lvar_init(init, var->ty, &desg, tok);
 }
 
