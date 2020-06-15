@@ -730,8 +730,9 @@ static Initializer *string_initializer(Token **rest, Token *tok, Type *ty) {
 }
 
 // array-initializer = "{" initializer ("," initializer)* "}"
+//                    | initializer ("," initializer)* ","
 static Initializer *array_initializer(Token **rest, Token *tok, Type *ty) {
-  tok = skip(tok, "{");
+  bool has_paren = consume(&tok, tok, "{");
 
   if (ty->is_incomplete) {
     int i = 0;
@@ -753,11 +754,15 @@ static Initializer *array_initializer(Token **rest, Token *tok, Type *ty) {
       tok = skip(tok, ",");
     init->children[i] = initializer(&tok, tok, ty->base);
   }
-  *rest = skip_end(tok);
+
+  if (has_paren)
+    tok = skip_end(tok);
+  *rest = tok;
   return init;
 }
 
 // struct-initializer = "{" initializer ("," initializer)* "}"
+//                    | initializer ("," initializer)* ","
 static Initializer *struct_initializer(Token **rest, Token *tok, Type *ty) {
   if (!equal(tok, "{")) {
     Token *tok2;
@@ -775,7 +780,7 @@ static Initializer *struct_initializer(Token **rest, Token *tok, Type *ty) {
     len++;
 
   Initializer *init = new_init(ty, len, NULL, tok);
-  tok = skip(tok, "{");
+  bool has_paren = consume(&tok, tok, "{");
 
   int i = 0;
   for (Member *mem = ty->members; mem && !equal(tok, "}"); mem = mem->next, i++) {
@@ -784,7 +789,9 @@ static Initializer *struct_initializer(Token **rest, Token *tok, Type *ty) {
     init->children[i] = initializer(&tok, tok, mem->ty);
   }
 
-  *rest = skip_end(tok);
+  if (has_paren)
+    tok = skip_end(tok);
+  *rest = tok;
   return init;
 }
 
