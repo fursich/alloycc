@@ -50,6 +50,10 @@ char *g34 = {"foo"};
 extern int ext1;
 extern int *ext2;
 
+int;
+struct {char a; int b;};
+typedef struct {char a; int b;} Ty1;
+
 // typedef
 typedef int MyInt, MyInt2[4];
 
