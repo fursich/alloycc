@@ -47,6 +47,9 @@ struct {int a[2];} g31[2] = {1, 2, 3, 4};
 char g33[][4] = {'f', 'o', 'o', 0, 'b', 'a', 'r', 0};
 char *g34 = {"foo"};
 
+extern int ext1;
+extern int *ext2;
+
 // typedef
 typedef int MyInt, MyInt2[4];
 
@@ -105,6 +108,12 @@ static int static_fn() { return 3; }
 int param_decay(int x[]) { return x[0]; }
 
 int main() {
+
+  ext1 = 5;
+  assert(5, ext1, "ext1");
+
+  ext2 = &ext1;
+  assert(5, *ext2, "*ext2");
 
   assert(3, ({ int a[]={1,2,3,}; a[2]; }), "({ int a[]={1,2,3,}; a[2]; })");
   assert(1, ({ struct {int a,b,c;} x={1,2,3,}; x.a; }), "({ struct {int a,b,c;} x={1,2,3,}; x.a; })");

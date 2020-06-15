@@ -22,6 +22,7 @@ struct VarScope {
 typedef struct {
   bool is_typedef;
   bool is_static;
+  bool is_extern;
 } VarAttr;
 
 // Scope for struct, union or enum tags
@@ -429,7 +430,7 @@ static Type *typespec(Token **rest, Token *tok, VarAttr *attr) {
 
   while (is_typename(tok)) {
     // handle storage class specifiers
-    if (equal(tok, "typedef") || equal(tok, "static")) {
+    if (equal(tok, "typedef") || equal(tok, "static") || equal(tok, "extern")) {
       if (!attr)
         error_tok(tok, "storage class specifier is not allowed in this context");
 
@@ -437,10 +438,12 @@ static Type *typespec(Token **rest, Token *tok, VarAttr *attr) {
         attr->is_typedef = true;
       else if(consume(&tok, tok, "static"))
         attr->is_static = true;
+      else if(consume(&tok, tok, "extern"))
+        attr->is_extern = true;
       else
         error_tok(tok, "internal error");
 
-      if (attr->is_typedef + attr->is_static > 1)
+      if (attr->is_typedef + attr->is_static + attr->is_extern > 1)
         error_tok(tok, "typedef and static may not be used together");
       continue;
     }
@@ -889,8 +892,8 @@ static Node *lvar_initializer(Token **rest, Token *tok, Var *var) {
 // whether given token reprents a type
 static bool is_typename(Token *tok) {
   static char *kw[] = {
-    "static", "void", "_Bool", "char", "short", "int", "long",
-    "struct", "union", "typedef", "enum",
+    "void", "_Bool", "char", "short", "int", "long",
+    "struct", "union", "extern", "static", "typedef", "enum",
   };
 
   for (int i = 0; i < sizeof(kw) / sizeof(*kw); i++)
