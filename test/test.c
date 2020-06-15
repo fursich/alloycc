@@ -79,6 +79,14 @@ int param_decay(int x[]) { return x[0]; }
 
 int main() {
 
+  assert('a', ({ char x[4]="abc"; x[0]; }), "({ char x[4]=\"abc\"; x[0]; })");
+  assert('c', ({ char x[4]="abc"; x[2]; }), "({ char x[4]=\"abc\"; x[2]; })");
+  assert(0, ({ char x[4]="abc"; x[3]; }), "({ char x[4]=\"abc\"; x[3]; })");
+  assert('a', ({ char x[2][4]={"abc","def"}; x[0][0]; }), "({ char x[2][4]={\"abc\",\"def\"}; x[0][0]; })");
+  assert(0, ({ char x[2][4]={"abc","def"}; x[0][3]; }), "({ char x[2][4]={\"abc\",\"def\"}; x[0][3]; })");
+  assert('d', ({ char x[2][4]={"abc","def"}; x[1][0]; }), "({ char x[2][4]={\"abc\",\"def\"}; x[1][0]; })");
+  assert('f', ({ char x[2][4]={"abc","def"}; x[1][2]; }), "({ char x[2][4]={\"abc\",\"def\"}; x[1][2]; })");
+
   // when enabled, warnings are given against excess elements
   // assert(1, ({ int x[3]={1,2,3,4}; x[0]; }), "({ int x[3]={1,2,3,4}; x[0]; })");
   // assert(6, ({ int x[2][3]={{1,2,3,4},{4,5,6,7,8,9}}; x[1][2]; }), "({ int x[2][3]={{1,2,3,4},{4,5,6,7,8,9}}; x[1][2]; })");
