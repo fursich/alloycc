@@ -76,6 +76,60 @@ static Var *current_fn;
 // a switch statement. Otherwise, NULL.
 static Node *current_switch;
 
+static bool is_typename(Token *tok);
+static Type *typespec(Token **rest, Token *tok, VarAttr *attr);
+static void register_enum_list(Token **rest, Token *tok, Type *ty);
+static Type *enum_specifier(Token **rest, Token *tok);
+static Type *type_suffix(Token **rest, Token *tok, Type *ty);
+static Type *declarator(Token **rest, Token *tok, Type *base);
+static Node *declaration(Token **rest, Token *tok);
+static Initializer *initializer(Token **rest, Token *tok, Type *ty);
+static char *gvar_initializer(Token **rest, Token *tok, Type *ty);
+static Node *lvar_initializer(Token **rest, Token *tok, Var *var);
+
+static Function *funcdef(Token **rest, Token *tok);
+static Type *func_params(Token **rest, Token *tok);
+static Type *struct_decl(Token **rest, Token *tok);
+static Type *union_decl(Token **rest, Token *tok);
+
+static Node *block_stmt(Token **rest, Token *tok);
+static Node *stmt(Token **rest, Token *tok);
+
+static Node *if_stmt(Token **rest, Token *tok);
+static Node *while_stmt(Token **rest, Token *tok);
+static Node *for_stmt(Token **rest, Token *tok);
+
+static Node *goto_stmt(Token **rest, Token *tok);
+static Node *switch_stmt(Token **rest, Token *tok);
+static Node *case_labeled_stmt(Token **rest, Token *tok);
+static Node *default_labeled_stmt(Token **rest, Token *tok);
+static Node *labeled_stmt(Token **rest, Token *tok);
+
+static Node *return_stmt(Token **rest, Token *tok);
+static Node *expr_stmt(Token **rest, Token *tok);
+
+static Node *expr(Token **rest, Token *tok);
+static long eval(Node *node);
+static long const_expr(Token **rest, Token *tok);
+static Node *assign(Token **rest, Token *tok);
+static Node *conditional(Token **rest, Token *tok);
+static Node *logor(Token **rest, Token *tok);
+static Node *logand(Token **rest, Token *tok);
+static Node *bitor(Token **rest, Token *tok);
+static Node *bitxor(Token **rest, Token *tok);
+static Node *bitand(Token **rest, Token *tok);
+static Node *equality(Token **rest, Token *tok);
+static Node *relational(Token **rest, Token *tok);
+static Node *shift(Token **rest, Token *tok);
+static Node *add(Token **rest, Token *tok);
+static Node *mul(Token **rest, Token *tok);
+static Node *cast(Token **rest, Token *tok);
+static Node *unary(Token **rest, Token *tok);
+static Node *postfix(Token **rest, Token *tok);
+static Node *primary(Token **rest, Token *tok);
+static Node *funcall(Token **rest, Token *tok);
+static Node *arg_list(Token **rest, Token *tok, Type *param_ty);
+
 static void enter_scope() {
   scope_depth++;
 }
@@ -301,58 +355,6 @@ Node *new_node_cast(Node *expr, Type *ty) {
   return node;
 }
 
-static bool is_typename(Token *tok);
-static Type *typespec(Token **rest, Token *tok, VarAttr *attr);
-static void register_enum_list(Token **rest, Token *tok, Type *ty);
-static Type *enum_specifier(Token **rest, Token *tok);
-static Type *type_suffix(Token **rest, Token *tok, Type *ty);
-static Type *declarator(Token **rest, Token *tok, Type *base);
-static Node *declaration(Token **rest, Token *tok);
-static Initializer *initializer(Token **rest, Token *tok, Type *ty);
-static Node *lvar_initializer(Token **rest, Token *tok, Var *var);
-
-static Function *funcdef(Token **rest, Token *tok);
-static Type *func_params(Token **rest, Token *tok);
-static Type *struct_decl(Token **rest, Token *tok);
-static Type *union_decl(Token **rest, Token *tok);
-
-static Node *block_stmt(Token **rest, Token *tok);
-static Node *stmt(Token **rest, Token *tok);
-
-static Node *if_stmt(Token **rest, Token *tok);
-static Node *while_stmt(Token **rest, Token *tok);
-static Node *for_stmt(Token **rest, Token *tok);
-
-static Node *goto_stmt(Token **rest, Token *tok);
-static Node *switch_stmt(Token **rest, Token *tok);
-static Node *case_labeled_stmt(Token **rest, Token *tok);
-static Node *default_labeled_stmt(Token **rest, Token *tok);
-static Node *labeled_stmt(Token **rest, Token *tok);
-
-static Node *return_stmt(Token **rest, Token *tok);
-static Node *expr_stmt(Token **rest, Token *tok);
-
-static Node *expr(Token **rest, Token *tok);
-static long const_expr(Token **rest, Token *tok);
-static Node *assign(Token **rest, Token *tok);
-static Node *conditional(Token **rest, Token *tok);
-static Node *logor(Token **rest, Token *tok);
-static Node *logand(Token **rest, Token *tok);
-static Node *bitor(Token **rest, Token *tok);
-static Node *bitxor(Token **rest, Token *tok);
-static Node *bitand(Token **rest, Token *tok);
-static Node *equality(Token **rest, Token *tok);
-static Node *relational(Token **rest, Token *tok);
-static Node *shift(Token **rest, Token *tok);
-static Node *add(Token **rest, Token *tok);
-static Node *mul(Token **rest, Token *tok);
-static Node *cast(Token **rest, Token *tok);
-static Node *unary(Token **rest, Token *tok);
-static Node *postfix(Token **rest, Token *tok);
-static Node *primary(Token **rest, Token *tok);
-static Node *funcall(Token **rest, Token *tok);
-static Node *arg_list(Token **rest, Token *tok, Type *param_ty);
-
 // program = (funcdef | global-var)*
 Program *parse(Token *tok) {
 
@@ -389,7 +391,9 @@ Program *parse(Token *tok) {
 
     // global variable = typespec declarator ("," declarator)* ";"
     for (;;) {
-      new_gvar(get_identifier(ty->ident), ty, true);
+      Var *var = new_gvar(get_identifier(ty->ident), ty, true);
+      if (consume(&tok, tok, "="))
+        var->init_data = gvar_initializer(&tok, tok, ty);
       if (consume(&tok, tok, ";"))
         break;
       tok =  skip(tok, ",");
@@ -864,6 +868,48 @@ static bool is_typename(Token *tok) {
       return true;
 
   return lookup_typedef(tok);
+}
+
+static void write_buf(char *buf, unsigned long val, int sz) {
+  switch(sz) {
+  case 1:
+    *(unsigned char *)buf = val;
+    return;
+  case 2:
+    *(unsigned short *)buf = val;
+    return;
+  case 4:
+    *(unsigned int *)buf = val;
+    return;
+  default:
+    assert(sz == 8);
+    *(unsigned long *)buf = val;
+    return;
+  }
+}
+
+static void write_gvar_data(Initializer *init, Type *ty, char *buf, int offset) {
+  if (ty->kind == TY_ARRAY) {
+    int sz = size_of(ty->base);
+    for (int i = 0; i < ty->array_len; i++) {
+      Initializer *child = init->children[i];
+      if (child)
+        write_gvar_data(child, ty->base, buf, offset + sz * i);
+    }
+    return;
+  }
+
+  write_buf(buf + offset, eval(init->expr), size_of(ty));
+}
+
+// serializs Initializer objects to a flat byte array. initial values for
+// gloval vars need to be evaluated at compile time to have embedded
+// into .data section
+static char *gvar_initializer(Token **rest, Token *tok, Type *ty) {
+  Initializer *init = initializer(rest, tok, ty);
+  char *buf = calloc(1, size_of(ty));
+  write_gvar_data(init, ty, buf, 0);
+  return buf;
 }
 
 // struct-union-members = (typespec declarator ("," declarator)* ";")*

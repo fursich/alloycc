@@ -7,18 +7,23 @@ int printf();
 int exit();
 
 // test function
-int assert(int expected, int actual, char *code) {
+int assert(long expected, long actual, char *code) {
   if (expected == actual) {
-    printf("%s => %d\n", code, actual);
+    printf("%s => %ld\n", code, actual);
   } else {
-    printf("%s => %d expected, but got %d\n", code, expected, actual);
+    printf("%s => %ld expected, but got %ld\n", code, expected, actual);
     exit(1);
   }
   return 0;
 }
 
 // global vars
-int g1, g2[4], g3;
+int g1, g2[4], gp;
+
+char g3 = 3;
+short g4 = 4;
+int g5 = 5;
+long g6 = 6;
 
 // typedef
 typedef int MyInt, MyInt2[4];
@@ -58,8 +63,8 @@ int sub_long(long a, long b, long c) {
   return a - b - c;
 }
 
-int *g3_ptr() {
-  return &g3;
+int *gp_ptr() {
+  return &gp;
 }
 
 char int_to_char(int x) {
@@ -78,6 +83,11 @@ static int static_fn() { return 3; }
 int param_decay(int x[]) { return x[0]; }
 
 int main() {
+
+  assert(3, g3, "g3");
+  assert(4, g4, "g4");
+  assert(5, g5, "g5");
+  assert(6, g6, "g6");
 
   assert(1, ({ struct {int a; int b; int c;} x={1,2,3}; x.a; }), "({ struct {int a; int b; int c;} x={1,2,3}; x.a; })");
   assert(2, ({ struct {int a; int b; int c;} x={1,2,3}; x.b; }), "({ struct {int a; int b; int c;} x={1,2,3}; x.b; })");
@@ -355,11 +365,11 @@ int main() {
 
   assert(-5, div_long(-10, 2), "div_long(-10, 2)");
 
-  assert(3, ({ g3 = 3; *g3_ptr(); }), "({ g3 = 3; *g3_ptr(); })");
+  assert(3, ({ gp = 3; *gp_ptr(); }), "({ gp = 3; *gp_ptr(); })");
   assert(5, int_to_char(261), "int_to_char(261)");
 
-  assert(0,           ({  int x = 1; int i; for(i=0;i<31;i=i+1) { x = x * 2; } (x * 2) / 2; }), "({ int x = 1; int i; for(i=0;i<31;i=i+1) { x = x * 2; } (x * 2) / 2; })");
-  assert(-2147483648, ({ long x = 1; int i; for(i=0;i<31;i=i+1) { x = x * 2; } (x * 2) / 2; }), "({ long x = 1; int i; for(i=0;i<31;i=i+1) { x = x * 2; } (x * 2) / 2; })");
+  assert(0,          ({  int x = 1; int i; for(i=0;i<31;i=i+1) { x = x * 2; } (x * 2) / 2; }), "({ int x = 1; int i; for(i=0;i<31;i=i+1) { x = x * 2; } (x * 2) / 2; })");
+  assert(2147483648, ({ long x = 1; int i; for(i=0;i<31;i=i+1) { x = x * 2; } (x * 2) / 2; }), "({ long x = 1; int i; for(i=0;i<31;i=i+1) { x = x * 2; } (x * 2) / 2; })");
 
   assert(4, sizeof(-10 + 5), "sizeof(-10 + 5)");
   assert(4, sizeof(-10 - 5), "sizeof(-10 - 5)");
