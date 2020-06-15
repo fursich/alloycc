@@ -1095,9 +1095,14 @@ static Function *funcdef(Token **rest, Token *tok) {
   return func;
 }
 
-// func-params = param, ("," param)*
+// func-params = ("void" | param, ("," param)*)? ")"
 // param = typespec declarator
 static Type *func_params(Token **rest, Token *tok) {
+  if (equal(tok, "void") && equal(tok->next, ")")) {
+    *rest = tok->next;
+    return NULL;
+  }
+
   Type head = {0};
   Type *cur = &head;
 

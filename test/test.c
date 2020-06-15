@@ -85,7 +85,7 @@ int sub_long(long a, long b, long c) {
   return a - b - c;
 }
 
-int *gp_ptr() {
+int *gp_ptr(void) {
   return &gp;
 }
 
