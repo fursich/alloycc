@@ -305,6 +305,9 @@ static void gen_expr(Node *node) {
     gen_expr(node->lhs);
     load(node->ty);
     return;
+  case ND_NULL_EXPR:
+    printf("  sub rsp, 8\n");
+    return;
   }
 
   gen_expr(node->lhs);

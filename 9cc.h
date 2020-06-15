@@ -101,6 +101,8 @@ typedef enum {
   ND_EXPR_STMT, // statement with expression (w/o return)
   ND_STMT_EXPR, // statement expression (GNU extension)
   ND_FUNCALL,   // function call
+  ND_NULL_EXPR, // do nothing
+
   ND_VAR,       // local variables
   ND_NUM,       // Integer
   ND_CAST,      // type cast

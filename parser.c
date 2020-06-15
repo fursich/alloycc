@@ -33,6 +33,32 @@ struct TagScope {
   Type *ty;
 };
 
+// represents a variable initializer
+// this struct has a tree structure since initializers can be nested:
+// (e.g. int x[2][2] = {{1, 2}, {3, 4}})
+typedef struct Initializer Initializer;
+struct Initializer {
+  Type *ty;
+  Token *tok;
+
+  // for leaf nodes, len == 0 and expr is the initializer expression
+  // otherwise children has chile nodes of length `len`
+  int len;
+  Node *expr;
+
+  // children might contain null pointers, in which case, corresponding
+  // members have to be initialized by zeroes.
+  Initializer **children;
+};
+
+// For local variable initializer
+typedef struct InitDesg InitDesg;
+struct InitDesg {
+  InitDesg *next;
+  int idx;
+  Var *var;
+};
+
 Var *locals;
 Var *globals;
 
@@ -114,6 +140,18 @@ static Member *new_member(char *name, Type *ty) {
   mem->name = name;
   mem->ty= ty;
   return mem;
+}
+
+static Initializer *new_init(Type *ty, int len, Node *expr, Token *tok) {
+  Initializer *init = calloc(1, sizeof(Initializer));
+  init->ty = ty;
+  init->tok = tok;
+  init->len = len;
+  init->expr = expr;
+  if (len)
+    init->children = calloc(len, sizeof(Initializer *));
+
+  return init;
 }
 
 static Var *new_lvar(char *name, Type *ty) {
@@ -269,6 +307,7 @@ static Type *enum_specifier(Token **rest, Token *tok);
 static Type *type_suffix(Token **rest, Token *tok, Type *ty);
 static Type *declarator(Token **rest, Token *tok, Type *base);
 static Node *declaration(Token **rest, Token *tok);
+static Node *lvar_initializer(Token **rest, Token *tok, Var *var);
 
 static Function *funcdef(Token **rest, Token *tok);
 static Type *func_params(Token **rest, Token *tok);
@@ -615,8 +654,9 @@ static Node *declaration(Token **rest, Token *tok) {
   VarAttr attr = {0};
   Type *basety = typespec(&tok, tok, &attr);
 
+  int cnt = 0;
   while(!consume(&tok, tok, ";")) {
-    if (cur != &head)
+    if (cnt++ > 0)
       tok =  skip(tok, ",");
 
     Token *start = tok;
@@ -631,11 +671,10 @@ static Node *declaration(Token **rest, Token *tok) {
 
     Var *var = new_lvar(get_identifier(ty->ident), ty);
 
-    Node *node = new_node_var(var, tok);
-    if (consume(&tok, tok, "="))
-      node = new_node_binary(ND_ASSIGN, node, assign(&tok, tok), start);
-
-    cur = cur->next = new_node_unary(ND_EXPR_STMT, node, start);
+    if (consume(&tok, tok, "=")) {
+      Node *expr = lvar_initializer(&tok, tok, var);
+      cur = cur->next = new_node_unary(ND_EXPR_STMT, expr, tok);
+    }
   }
 
   Node *blk = new_node(ND_BLOCK, start_decl);
@@ -643,6 +682,57 @@ static Node *declaration(Token **rest, Token *tok) {
 
   *rest = tok;
   return blk;
+}
+
+// initializer = "{" initializer ("," initializer)* "}"
+//            | assign
+static Initializer *initializer(Token **rest, Token *tok, Type *ty) {
+  if (ty->kind == TY_ARRAY) {
+    tok = skip(tok, "{");
+    Initializer *init = new_init(ty, ty->array_len, NULL, tok);
+
+    for (int i = 0; i < ty->array_len; i++) {
+      if (i > 0)
+        tok = skip(tok, ",");
+      init->children[i] = initializer(&tok, tok, ty->base);
+    }
+    *rest = skip(tok, "}");
+    return init;
+  }
+  return new_init(ty, 0, assign(rest, tok), tok);
+}
+
+Node *init_desg_expr(InitDesg *desg, Token *tok) {
+  if (desg->var)
+    return new_node_var(desg->var, tok);
+
+  Node *lhs = init_desg_expr(desg->next, tok);
+  Node *rhs = new_node_num(desg->idx, tok);
+
+  return new_node_unary(ND_DEREF, new_node_add(lhs, rhs, tok), tok);
+}
+
+static Node *create_lvar_init(Initializer *init, Type *ty, InitDesg *desg, Token *tok) {
+  if (ty->kind == TY_ARRAY) {
+    Node *node = new_node(ND_NULL_EXPR, tok);
+    int sz = size_of(ty->base);
+    for (int i = 0; i < ty->array_len; i++) {
+      InitDesg desg2 = {desg, i};
+      Node *rhs = create_lvar_init(init->children[i], ty->base, &desg2, tok);
+      node = new_node_binary(ND_COMMA, node, rhs, tok);
+    }
+    return node;
+  }
+
+  Node *lhs = init_desg_expr(desg, tok);
+  Node *rhs = init->expr;
+  return new_node_binary(ND_ASSIGN, lhs, rhs, tok);
+}
+
+static Node *lvar_initializer(Token **rest, Token *tok, Var *var) {
+  Initializer *init = initializer(rest, tok, var->ty);
+  InitDesg desg = {NULL, 0, var};
+  return create_lvar_init(init, var->ty, &desg, tok);
 }
 
 // whether given token reprents a type
