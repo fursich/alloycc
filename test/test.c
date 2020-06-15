@@ -79,6 +79,10 @@ int param_decay(int x[]) { return x[0]; }
 
 int main() {
 
+  // when enabled, warnings are given against excess elements
+  // assert(1, ({ int x[3]={1,2,3,4}; x[0]; }), "({ int x[3]={1,2,3,4}; x[0]; })");
+  // assert(6, ({ int x[2][3]={{1,2,3,4},{4,5,6,7,8,9}}; x[1][2]; }), "({ int x[2][3]={{1,2,3,4},{4,5,6,7,8,9}}; x[1][2]; })");
+
   assert(0, ({ int x[3]={}; x[0]; }), "({ int x[3]={}; x[0]; })");
   assert(0, ({ int x[3]={}; x[1]; }), "({ int x[3]={}; x[1]; })");
   assert(0, ({ int x[3]={}; x[2]; }), "({ int x[3]={}; x[2]; })");
