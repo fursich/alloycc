@@ -106,6 +106,10 @@ int param_decay(int x[]) { return x[0]; }
 
 int main() {
 
+  assert(3, ({ int a[]={1,2,3,}; a[2]; }), "({ int a[]={1,2,3,}; a[2]; })");
+  assert(1, ({ struct {int a,b,c;} x={1,2,3,}; x.a; }), "({ struct {int a,b,c;} x={1,2,3,}; x.a; })");
+  assert(2, ({ enum {x,y,z,}; z; }), "({ enum {x,y,z,}; z; })");
+
   assert(0, strcmp(g34, "foo"), "strcmp(g34, \"foo\")");
 
   // TODO: confirm if it is legal expression
