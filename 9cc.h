@@ -12,6 +12,7 @@
 
 typedef struct Type Type;
 typedef struct Member Member;
+typedef struct Relocation Relocation;
 
 //
 // tokenize.c
@@ -120,6 +121,15 @@ struct Var {
 
   // for global variables
   char *init_data;
+  Relocation *rel;
+};
+
+// used for gloval vars initialization using a pointer to another global vars
+struct Relocation {
+  Relocation *next;
+  int offset;
+  char *label;
+  long addend;
 };
 
 typedef struct Node Node;

@@ -84,7 +84,7 @@ static Type *type_suffix(Token **rest, Token *tok, Type *ty);
 static Type *declarator(Token **rest, Token *tok, Type *base);
 static Node *declaration(Token **rest, Token *tok);
 static Initializer *initializer(Token **rest, Token *tok, Type *ty);
-static char *gvar_initializer(Token **rest, Token *tok, Type *ty);
+static void gvar_initializer(Token **rest, Token *tok, Var *var);
 static Node *lvar_initializer(Token **rest, Token *tok, Var *var);
 
 static Function *funcdef(Token **rest, Token *tok);
@@ -110,6 +110,7 @@ static Node *expr_stmt(Token **rest, Token *tok);
 
 static Node *expr(Token **rest, Token *tok);
 static long eval(Node *node);
+static long eval2(Node *node, Var **var);
 static long const_expr(Token **rest, Token *tok);
 static Node *assign(Token **rest, Token *tok);
 static Node *conditional(Token **rest, Token *tok);
@@ -393,7 +394,7 @@ Program *parse(Token *tok) {
     for (;;) {
       Var *var = new_gvar(get_identifier(ty->ident), ty, true);
       if (consume(&tok, tok, "="))
-        var->init_data = gvar_initializer(&tok, tok, ty);
+        gvar_initializer(&tok, tok, var);
       if (consume(&tok, tok, ";"))
         break;
       tok =  skip(tok, ",");
@@ -888,15 +889,16 @@ static void write_buf(char *buf, unsigned long val, int sz) {
   }
 }
 
-static void write_gvar_data(Initializer *init, Type *ty, char *buf, int offset) {
+static Relocation *
+write_gvar_data(Relocation *cur, Initializer *init, Type *ty, char *buf, int offset) {
   if (ty->kind == TY_ARRAY) {
     int sz = size_of(ty->base);
     for (int i = 0; i < ty->array_len; i++) {
       Initializer *child = init->children[i];
       if (child)
-        write_gvar_data(child, ty->base, buf, offset + sz * i);
+        cur = write_gvar_data(cur, child, ty->base, buf, offset + sz * i);
     }
-    return;
+    return cur;
   }
 
   if (ty->kind == TY_STRUCT) {
@@ -904,22 +906,39 @@ static void write_gvar_data(Initializer *init, Type *ty, char *buf, int offset) 
     for (Member *mem = ty->members; mem; mem = mem->next, i++) {
       Initializer *child = init->children[i];
       if (child)
-        write_gvar_data(child, mem->ty, buf, offset + mem->offset);
+        cur = write_gvar_data(cur, child, mem->ty, buf, offset + mem->offset);
     }
-    return;
+    return cur;
   }
 
-  write_buf(buf + offset, eval(init->expr), size_of(ty));
+  Var *var = NULL;
+  long val = eval2(init->expr, &var);
+
+  if (var) {
+    Relocation *rel = calloc(1, sizeof(Relocation));
+    rel->offset = offset;
+    rel->label = var->name;
+    rel->addend = val;
+    cur->next = rel;
+    return cur->next;
+  }
+
+  write_buf(buf + offset, val, size_of(ty));
+  return cur;
 }
 
 // serializs Initializer objects to a flat byte array. initial values for
 // gloval vars need to be evaluated at compile time to have embedded
 // into .data section
-static char *gvar_initializer(Token **rest, Token *tok, Type *ty) {
-  Initializer *init = initializer(rest, tok, ty);
-  char *buf = calloc(1, size_of(ty));
-  write_gvar_data(init, ty, buf, 0);
-  return buf;
+static void gvar_initializer(Token **rest, Token *tok, Var *var) {
+  Initializer *init = initializer(rest, tok, var->ty);
+
+  Relocation head = {0};
+  char *buf = calloc(1, size_of(var->ty));
+  write_gvar_data(&head, init, var->ty, buf, 0);
+
+  var->init_data = buf;
+  var->rel = head.next;
 }
 
 // struct-union-members = (typespec declarator ("," declarator)* ";")*
@@ -1357,13 +1376,20 @@ static Node *expr(Token **rest, Token *tok) {
 
 // evaluate a given node as a constant expression
 static long eval(Node *node) {
+  return eval2(node, NULL);
+}
+
+// evaluate a given node as a constant expression
+// must be a number, or ptr + a (signed) number
+// (latter form can be accepted for global vars initialization only)
+static long eval2(Node *node, Var **var) {
   generate_type(node);
   
   switch (node->kind) {
     case ND_ADD:
-      return eval(node->lhs) + eval(node->rhs);
+      return eval2(node->lhs, var) + eval(node->rhs);
     case ND_SUB:
-      return eval(node->lhs) - eval(node->rhs);
+      return eval2(node->lhs, var) - eval(node->rhs);
     case ND_MUL:
       return eval(node->lhs) * eval(node->rhs);
     case ND_DIV:
@@ -1414,9 +1440,19 @@ static long eval(Node *node) {
         case 4: return (int)eval(node->lhs);
         }
       }
-      return eval(node->lhs);
+      return eval2(node->lhs, var);
     case ND_NUM:
       return node->val;
+    case ND_ADDR:
+      if (!var || *var || node->lhs->kind != ND_VAR)
+        error_tok(node->token, "invalid initializer");
+      *var = node->lhs->var;
+      return 0;
+    case ND_VAR:
+      if (!var || *var || node->var->ty->kind != TY_ARRAY)
+        error_tok(node->token, "invalid initializer");
+      *var = node->var;
+      return 0;
   }
 
   error_tok(node->token, "not a constant expression");
