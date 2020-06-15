@@ -45,6 +45,7 @@ int *g27 = g26 + 1;
 struct {int a[2];} g30[2] = {{1, 2}, 3, 4};
 struct {int a[2];} g31[2] = {1, 2, 3, 4};
 char g33[][4] = {'f', 'o', 'o', 0, 'b', 'a', 'r', 0};
+char *g34 = {"foo"};
 
 // typedef
 typedef int MyInt, MyInt2[4];
@@ -104,6 +105,8 @@ static int static_fn() { return 3; }
 int param_decay(int x[]) { return x[0]; }
 
 int main() {
+
+  assert(0, strcmp(g34, "foo"), "strcmp(g34, \"foo\")");
 
   // TODO: confirm if it is legal expression
   assert(1, ({ int x[3]=0,1,2; x[1]; }), "({ int x[3]=0,1,2; x[1]; })");
