@@ -717,6 +717,16 @@ static Node *declaration(Token **rest, Token *tok) {
       continue;
     }
 
+    if (attr.is_static) {
+      // static local variable
+      Var *var = new_gvar(new_gvar_name(), ty, true);
+      push_scope(get_identifier(ty->ident))->var = var;
+
+      if (equal(tok, "="))
+        gvar_initializer(&tok, tok->next, var);
+      continue;
+    }
+
     Var *var = new_lvar(get_identifier(ty->ident), ty);
     if (attr.align)
       var->align = attr.align;
@@ -1160,7 +1170,6 @@ static Type *func_params(Token **rest, Token *tok) {
 }
 
 // block_stmt = stmt*
-// TODO: allow blocks to have their own local vars
 static Node *block_stmt(Token **rest, Token *tok) {
   Node head = {};
   Node *cur = &head;
@@ -1515,7 +1524,7 @@ static long eval2(Node *node, Var **var) {
     case ND_NUM:
       return node->val;
     case ND_ADDR:
-      if (!var || *var || node->lhs->kind != ND_VAR)
+      if (!var || *var || node->lhs->kind != ND_VAR || node->lhs->var->is_local)
         error_tok(node->token, "invalid initializer");
       *var = node->lhs->var;
       return 0;

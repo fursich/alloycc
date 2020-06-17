@@ -114,7 +114,17 @@ static int static_fn() { return 3; }
 
 int param_decay(int x[]) { return x[0]; }
 
+int counter() {
+  static int i;
+  static int j = 1+1;
+  return i++ + j++;
+}
+
 int main() {
+
+  assert(2, counter(), "counter()");
+  assert(4, counter(), "counter()");
+  assert(6, counter(), "counter()");
 
   assert(1, ({ _Alignas(char) char x, y; &y-&x; }), "({ _Alignas(char) char x, y; &y-&x; })");
   assert(8, ({ _Alignas(long) char x, y; &y-&x; }), "({ _Alignas(long) char x, y; &y-&x; })");
