@@ -115,6 +115,7 @@ struct Var {
   char *name;
   Type *ty;
   bool is_local;
+  int align;
 
   // for local variables
   int offset;
@@ -247,6 +248,7 @@ struct Member {
   Type *ty;
   Token *tok; // for error message
   char *name;
+  int align;
   int offset;
 };
 

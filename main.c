@@ -15,7 +15,7 @@ int main(int argc, char **argv) {
     int offset = 0;
 
     for (Var *var = fn->locals; var; var = var->next) {
-      offset = align_to(offset, var->ty->align);
+      offset = align_to(offset, var->align);
       offset += size_of(var->ty);
       var->offset = offset;
     }

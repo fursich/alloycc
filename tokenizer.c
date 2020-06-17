@@ -158,6 +158,7 @@ static bool is_keyword(Token *tok) {
 
     "sizeof",
     "alignof",
+    "_Alignas",
     "extern",
     "static",
 

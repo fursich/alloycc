@@ -23,6 +23,7 @@ typedef struct {
   bool is_typedef;
   bool is_static;
   bool is_extern;
+  int align;
 } VarAttr;
 
 // Scope for struct, union or enum tags
@@ -79,6 +80,7 @@ static Node *current_switch;
 
 static bool is_typename(Token *tok);
 static Type *typespec(Token **rest, Token *tok, VarAttr *attr);
+static Type *typename(Token **rest, Token *tok);
 static void register_enum_list(Token **rest, Token *tok, Type *ty);
 static Type *enum_specifier(Token **rest, Token *tok);
 static Type *type_suffix(Token **rest, Token *tok, Type *ty);
@@ -188,7 +190,8 @@ static Node *new_node(NodeKind kind, Token *tok) {
 static Var *new_var(char *name, Type *ty) {
   Var *var = calloc(1, sizeof(Var));
   var->name = name;
-  var->ty= ty;
+  var->ty = ty;
+  var->align = ty->align;
   return var;
 }
 
@@ -396,8 +399,12 @@ Program *parse(Token *tok) {
     // global variable = typespec declarator ("," declarator)* ";"
     for (;;) {
       Var *var = new_gvar(get_identifier(ty->ident), ty, true);
+      if (attr.align)
+        var->align = attr.align;
+
       if (consume(&tok, tok, "="))
         gvar_initializer(&tok, tok, var);
+
       if (consume(&tok, tok, ";"))
         break;
       tok =  skip(tok, ",");
@@ -447,6 +454,20 @@ static Type *typespec(Token **rest, Token *tok, VarAttr *attr) {
 
       if (attr->is_typedef + attr->is_static + attr->is_extern > 1)
         error_tok(tok, "typedef and static may not be used together");
+      continue;
+    }
+
+    if (equal(tok, "_Alignas")) {
+      if (!attr)
+        error_tok(tok, "_Alignas is not allowed in this context");
+
+      tok = skip(tok->next, "(");
+
+      if (is_typename(tok))
+        attr->align = typename(&tok, tok)->align;
+      else
+        attr->align = const_expr(&tok, tok);
+      tok = skip(tok, ")");
       continue;
     }
 
@@ -697,6 +718,8 @@ static Node *declaration(Token **rest, Token *tok) {
     }
 
     Var *var = new_lvar(get_identifier(ty->ident), ty);
+    if (attr.align)
+      var->align = attr.align;
 
     if (consume(&tok, tok, "=")) {
       Node *expr = lvar_initializer(&tok, tok, var);
@@ -895,7 +918,8 @@ static Node *lvar_initializer(Token **rest, Token *tok, Var *var) {
 static bool is_typename(Token *tok) {
   static char *kw[] = {
     "void", "_Bool", "char", "short", "int", "long",
-    "struct", "union", "extern", "static", "typedef", "enum",
+    "struct", "union", "typedef", "enum",
+    "extern", "static", "_Alignas",
   };
 
   for (int i = 0; i < sizeof(kw) / sizeof(*kw); i++)
@@ -981,7 +1005,8 @@ static Member *struct_union_members(Token **rest, Token *tok) {
   Member *cur = &head;
 
   while (!equal(tok, "}")) {
-    Type *basety = typespec(&tok, tok, NULL);
+    VarAttr attr = {0};
+    Type *basety = typespec(&tok, tok, &attr);
     int cnt = 0;
 
     while (!consume(&tok, tok, ";")) {
@@ -990,6 +1015,7 @@ static Member *struct_union_members(Token **rest, Token *tok) {
 
       Type *ty = declarator(&tok, tok, basety);
       Member *mem = new_member(get_identifier(ty->ident), ty);
+      mem->align = attr.align ? attr.align : mem->ty->align;
       cur = cur->next = mem;
     }
   }
@@ -1046,12 +1072,12 @@ static Type *struct_decl(Token **rest, Token *tok) {
 
   int offset = 0;
   for (Member *mem = ty->members; mem; mem = mem->next) {
-    offset = align_to(offset, mem->ty->align);
+    offset = align_to(offset, mem->align);
     mem->offset = offset;
     offset += size_of(mem->ty);
 
-    if (ty->align < mem->ty->align)
-      ty->align = mem->ty->align;
+    if (ty->align < mem->align)
+      ty->align = mem->align;
   }
   ty->size = align_to(offset, ty->align);
 
@@ -1066,8 +1092,8 @@ static Type *union_decl(Token **rest, Token *tok) {
   // just need to leave these values unchanged after initialization.
   // Nonetheless alignment and size should be properly calculated.
   for (Member *mem = ty->members; mem; mem = mem->next) {
-    if (ty->align < mem->ty->align)
-      ty->align = mem->ty->align;
+    if (ty->align < mem->align)
+      ty->align = mem->align;
     if (ty->size < size_of(mem->ty))
       ty->size = size_of(mem->ty);
   }
