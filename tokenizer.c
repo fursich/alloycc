@@ -157,6 +157,7 @@ static bool is_keyword(Token *tok) {
     "return",
 
     "sizeof",
+    "alignof",
     "extern",
     "static",
 

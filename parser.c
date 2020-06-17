@@ -1885,6 +1885,7 @@ static Node *postfix(Token **rest, Token *tok) {
 //           | "(" expr ")"
 //           | "sizeof" "(" typename ")"
 //           | "sizeof" unary
+//           | "alignof" "(" typename ")"
 //           | ident ("(" arg-list ")")?
 //           | str
 //           | num
@@ -1945,6 +1946,13 @@ static Node *primary(Token **rest, Token *tok) {
     generate_type(node);
     *rest = tok;
     return new_node_num(size_of(node->ty), start);
+  }
+
+  if (consume(&tok, tok, "alignof")) {
+    tok = skip(tok, "(");
+    Type *ty = typename(&tok, tok);
+    *rest = skip(tok, ")");
+    return new_node_num(ty->align, tok);
   }
 
   if (tok->kind == TK_STR) {
