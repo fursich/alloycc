@@ -126,6 +126,10 @@ int div_long(long a, long b) {
 _Bool bool_fn_add(_Bool x) { return x + 1; }
 _Bool bool_fn_sub(_Bool x) { return x - 1; }
 
+void ret_none() {
+  return;
+}
+
 static int static_fn() { return 3; }
 
 int param_decay(int x[]) { return x[0]; }
@@ -137,6 +141,8 @@ int counter() {
 }
 
 int main() {
+
+  ret_none();
 
   assert(1, (int){1}, "(int){1}");
   assert(2, ((int[]){0,1,2})[2], "((int[]){0,1,2})[2]");

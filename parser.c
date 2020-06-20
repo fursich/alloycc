@@ -1416,11 +1416,14 @@ static Node *labeled_stmt(Token **rest, Token *tok) {
   return node;
 }
 
-// return_stmt = "return" expr
+// return_stmt = "return" expr? ";"
 static Node *return_stmt(Token **rest, Token *tok) {
   Node *node = new_node(ND_RETURN, tok);
 
   tok =  skip(tok, "return");
+  if (consume(rest, tok, ";"))
+    return node;
+
   Node *exp = expr(&tok, tok);
   *rest =  skip(tok, ";");
 

@@ -484,8 +484,10 @@ static void gen_stmt(Node *node) {
     gen_stmt(node->lhs);
     return;
   case ND_RETURN:
-    gen_expr(node->lhs);
-    printf("  pop rax\n");
+    if (node->lhs) {
+      gen_expr(node->lhs);
+      printf("  pop rax\n");
+    }
     printf("  jmp .L.return.%s\n", current_fn->name);
     return;
   case ND_BLOCK: {
