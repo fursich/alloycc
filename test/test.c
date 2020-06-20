@@ -65,6 +65,7 @@ Tree *tree = &(Tree){
 
 extern int ext1;
 extern int *ext2;
+static int ext3 = 3;
 
 int;
 struct {char a; int b;};
@@ -141,6 +142,8 @@ int counter() {
 }
 
 int main() {
+
+  assert(3, ext3, "ext3");
 
   ret_none();
 

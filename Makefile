@@ -46,7 +46,7 @@ test: $(TSTTARGET)
 
 $(TSTTARGET): $(TSTSOURCE) $(DBGTARGET)
 	$(DBGTARGET) $(TSTSOURCE) > $(TSTTARGET).s
-	echo 'int ext1; int *ext2; int static_fn() { return 5; }' | $(CC) -xc -c -o $(TSTDIR)/tmp2.o -
+	echo 'int ext1; int *ext2; int ext3 = 5; int static_fn() { return 5; }' | $(CC) -xc -c -fno-common -o $(TSTDIR)/tmp2.o -
 	$(CC) $(TSTLDFLAGS) -o $(TSTTARGET) $(TSTTARGET).s $(TSTDIR)/tmp2.o
 
 

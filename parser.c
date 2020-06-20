@@ -223,9 +223,10 @@ static Var *new_lvar(char *name, Type *ty) {
   return var;
 }
 
-static Var *new_gvar(char *name, Type *ty, bool emit) {
+static Var *new_gvar(char *name, Type *ty, bool is_static, bool emit) {
   Var *var = new_var(name, ty);
   var->is_local = false;
+  var->is_static = is_static;
   if (emit) {
     var->next = globals;
     globals = var;
@@ -270,7 +271,7 @@ static char *new_gvar_name() {
 
 static Var *new_string_literal(char *s, int len) {
   Type *ty = array_of(ty_char, len);
-  Var *var = new_gvar(new_gvar_name(), ty, true);
+  Var *var = new_gvar(new_gvar_name(), ty, true, true);
   var->init_data = s;
   return var;
 }
@@ -390,7 +391,7 @@ Program *parse(Token *tok) {
 
     // function
     if (ty->kind == TY_FUNC) {
-      current_fn = new_gvar(get_identifier(ty->ident), ty, false);
+      current_fn = new_gvar(get_identifier(ty->ident), ty, attr.is_static, false);
       if (!consume(&tok, tok, ";"))
         cur = cur->next = funcdef(&tok, start);
       continue;
@@ -398,7 +399,7 @@ Program *parse(Token *tok) {
 
     // global variable = typespec declarator ("," declarator)* ";"
     for (;;) {
-      Var *var = new_gvar(get_identifier(ty->ident), ty, true);
+      Var *var = new_gvar(get_identifier(ty->ident), ty, attr.is_static, !attr.is_extern);
       if (attr.align)
         var->align = attr.align;
 
@@ -719,7 +720,7 @@ static Node *declaration(Token **rest, Token *tok) {
 
     if (attr.is_static) {
       // static local variable
-      Var *var = new_gvar(new_gvar_name(), ty, true);
+      Var *var = new_gvar(new_gvar_name(), ty, true, true);
       push_scope(get_identifier(ty->ident))->var = var;
 
       if (equal(tok, "="))
@@ -1798,7 +1799,7 @@ static Node *mul(Token **rest, Token *tok) {
 // compound-literal = "{" initializer "}"
 static Node *compound_literal(Token **rest, Token *tok, Type *ty, Token *start) {
   if (scope_depth == 0) {
-    Var *var = new_gvar(new_gvar_name(), ty, true);
+    Var *var = new_gvar(new_gvar_name(), ty, true, true);
     gvar_initializer(rest, tok, var);
     return new_node_var(var, start);
   }
