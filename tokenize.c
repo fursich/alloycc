@@ -144,6 +144,7 @@ static bool is_keyword(Token *tok) {
   static const char *keywords[] = {
     "if",
     "else",
+    "do",
     "while",
     "for",
     "break",

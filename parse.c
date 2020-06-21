@@ -100,6 +100,7 @@ static Node *stmt(Token **rest, Token *tok);
 
 static Node *if_stmt(Token **rest, Token *tok);
 static Node *while_stmt(Token **rest, Token *tok);
+static Node *do_stmt(Token **rest, Token *tok);
 static Node *for_stmt(Token **rest, Token *tok);
 
 static Node *goto_stmt(Token **rest, Token *tok);
@@ -1199,6 +1200,7 @@ static Node *block_stmt(Token **rest, Token *tok) {
 
 // stmt = if-stmt
 //      | while-stmt
+//      | do-stmt
 //      | switch-stmt
 //      | case-labeled-stmt
 //      | default-labeled-stmt
@@ -1235,6 +1237,11 @@ static Node *stmt(Token **rest, Token *tok) {
 
   if (equal(tok, "while")) {
     node = while_stmt(rest, tok);
+    return node;
+  }
+
+  if (equal(tok, "do")) {
+    node = do_stmt(rest, tok);
     return node;
   }
 
@@ -1360,6 +1367,22 @@ static Node *while_stmt(Token **rest, Token *tok) {
   node->then = stmt(&tok, tok);
 
   *rest = tok;
+  return node;
+}
+
+// do_stmt = "do" stmt "while" "(" expr ")" ";"
+static Node *do_stmt(Token **rest, Token *tok) {
+  tok =  skip(tok, "do");
+
+  Node *node = new_node(ND_DO, tok);
+  node->then = stmt(&tok, tok);
+
+  tok = skip(tok, "while");
+  tok = skip(tok, "(");
+  node->cond = expr(&tok, tok);
+  tok = skip(tok, ")");
+  *rest = skip(tok, ";");
+
   return node;
 }
 
