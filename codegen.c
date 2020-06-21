@@ -278,6 +278,11 @@ static void gen_expr(Node *node) {
 
     printf("  mov rax, 0\n");
     printf("  call %s\n", node->funcname);
+    // According to The System V x86-64 ABI, a function that returns a boolean is
+    // required to set the lower 8 bits only.
+    // Hense, the upper 56 bits might contain arbitary values.
+    if (node->ty->kind == TY_BOOL)
+      printf("  movzx rax, al\n");
     printf("  push rax\n");
     return;
   }
