@@ -1,5 +1,5 @@
 /*
- * test code for 9cc
+ * test code for alloycc
  */
 
 // function declarations;

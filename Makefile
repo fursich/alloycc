@@ -4,7 +4,7 @@ CFLAGS      = -std=c11 -static
 # for release build
 SRCS        = $(wildcard *.c)
 OBJS        = $(SRCS:.c=.o)
-TARGET      = 9cc
+TARGET      = alloycc
 HEADER      = $(TARGET).h
 
 # for stg1 build
