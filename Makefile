@@ -13,6 +13,11 @@ STG1OBJS    = $(addprefix $(STG1DIR)/, $(OBJS))
 STG1TARGET  = $(STG1DIR)/$(TARGET)
 BUILDCFLAGS = -g -o0 -DDEBUG
 
+# for stg2 build
+STG2DIR     = build-stg2
+STG2OBJS    = $(addprefix $(STG2DIR)/, $(OBJS))
+STG2TARGET  = $(STG2DIR)/$(TARGET)
+
 TSTDIR      = test
 TSTSOURCE   = $(TSTDIR)/test.c
 
@@ -26,7 +31,7 @@ $(TARGET): $(OBJS)
 
 $(OBJS): $(HEADER)
 
-# stg1 rules
+# << stg1 rules >>
 stg1: $(STG1TARGET)
 
 $(STG1TARGET): $(STG1OBJS)
@@ -41,11 +46,25 @@ test: $(STG1TARGET) $(TSTSOURCE) $(TSTDIR)/extern.o
 	$(CC) -static -o $(TSTDIR)/tmp $(TSTDIR)/tmp.s $(TSTDIR)/extern.o
 	$(TSTDIR)/tmp
 
+# << stg2 rules >>
+stg2: $(STG2TARGET)
+
+$(STG2TARGET): $(STG1TARGET) $(SRCS) $(HEADER) self.sh
+	./self.sh $(STG1TARGET) $(STG2DIR)
+	gcc -static -o $(STG2TARGET) $(STG2DIR)/*.o
+
+# for testing (w/ stg2)
+test-stg2: $(STG2TARGET) $(TSTSOURCE) $(TSTDIR)/extern.o
+	$(STG2TARGET) $(TSTSOURCE) > $(TSTDIR)/tmp.s
+	$(CC) -static -o $(TSTDIR)/tmp $(TSTDIR)/tmp.s $(TSTDIR)/extern.o
+	$(TSTDIR)/tmp
+
 clean:
-	rm -f $(TARGET) *.o *~ tmp* $(STG1DIR)/* $(TSTTARGET) $(TSTDIR)/*.o $(TSTDIR)/tmp*
+	rm -f $(TARGET) *.o *~ tmp* $(STG1DIR)/* $(STG2DIR)/* $(TSTTARGET) $(TSTDIR)/*.o $(TSTDIR)/tmp*
 
 prep:
 	mkdir -p $(STG1DIR)
+	mkdir -p $(STG2DIR)
 	mkdir -p $(TSTDIR)
 
-.PHONY: test clean release stg1 prep
+.PHONY: test test-stg2 clean release stg1 stg2 prep
