@@ -1,36 +1,22 @@
-CC         = gcc
-CFLAGS     = -std=c11 -static
+CC          = gcc
+CFLAGS      = -std=c11 -static
 
 # for release build
-SRCS       = $(wildcard *.c)
-OBJS       = $(SRCS:.c=.o)
-TARGET     = 9cc
-HEADER     = $(TARGET).h
-RELCFLAGS  = -g -o3 -DNDEBUG
+SRCS        = $(wildcard *.c)
+OBJS        = $(SRCS:.c=.o)
+TARGET      = 9cc
+HEADER      = $(TARGET).h
 
-# for debug build
-DBGDIR     = debug
-DBGOBJS    = $(addprefix $(DBGDIR)/, $(OBJS))
-DBGTARGET  = $(DBGDIR)/$(TARGET)
-DBGCFLAGS  = -g -o0 -DDEBUG
+# for stg1 build
+STG1DIR     = build-stg1
+STG1OBJS    = $(addprefix $(STG1DIR)/, $(OBJS))
+STG1TARGET  = $(STG1DIR)/$(TARGET)
+BUILDCFLAGS = -g -o0 -DDEBUG
 
-TSTDIR     = test
-TSTTARGET  = $(TSTDIR)/tmp
-TSTSOURCE  = $(TSTDIR)/test.c
-TSTLDFLAGS = -static
+TSTDIR      = test
+TSTSOURCE   = $(TSTDIR)/test.c
 
 all: prep release
-
-# debug rules
-debug: $(DBGTARGET)
-
-$(DBGTARGET): $(DBGOBJS)
-	$(CC) $(LDFLAGS) -o $@ $^
-
-$(DBGDIR)/%.o: %.c
-	$(CC) -c $(CFLAGS) $(DBGCFLAGS) -o $@ $<
-
-$(DBGOBJS): $(HEADER)
 
 #release rules
 release: $(TARGET)
@@ -40,21 +26,26 @@ $(TARGET): $(OBJS)
 
 $(OBJS): $(HEADER)
 
-# for testing (w/ debug)
-test: $(TSTTARGET)
-	$(TSTTARGET)
+# stg1 rules
+stg1: $(STG1TARGET)
 
-$(TSTTARGET): $(TSTSOURCE) $(DBGTARGET)
-	$(DBGTARGET) $(TSTSOURCE) > $(TSTTARGET).s
-	echo 'int ext1; int *ext2; int ext3 = 5; int static_fn() { return 5; }' | $(CC) -xc -c -fno-common -o $(TSTDIR)/tmp2.o -
-	$(CC) $(TSTLDFLAGS) -o $(TSTTARGET) $(TSTTARGET).s $(TSTDIR)/tmp2.o
+$(STG1TARGET): $(STG1OBJS)
+	$(CC) $(LDFLAGS) -o $@ $^
 
+$(STG1DIR)/%.o: %.c $(HEADER)
+	$(CC) -c $(CFLAGS) $(BUILDCFLAGS) -o $@ $<
+
+# for testing (w/ stg1)
+test: $(STG1TARGET) $(TSTSOURCE) $(TSTDIR)/extern.o
+	$(STG1TARGET) $(TSTSOURCE) > $(TSTDIR)/tmp.s
+	$(CC) -static -o $(TSTDIR)/tmp $(TSTDIR)/tmp.s $(TSTDIR)/extern.o
+	$(TSTDIR)/tmp
 
 clean:
-	rm -f $(TARGET) *.o *~ tmp* $(DBGTARGET) $(DBGDIR)/*.o $(DBGDIR)/tmp* $(TSTTARGET) $(TSTDIR)/*.o $(TSTDIR)/tmp*
+	rm -f $(TARGET) *.o *~ tmp* $(STG1DIR)/* $(TSTTARGET) $(TSTDIR)/*.o $(TSTDIR)/tmp*
 
 prep:
-	mkdir -p $(DBGDIR)
+	mkdir -p $(STG1DIR)
 	mkdir -p $(TSTDIR)
 
-.PHONY: test clean release debug prep
+.PHONY: test clean release stg1 prep

@@ -3,6 +3,6 @@
 tmp.*
 tmp
 *.o
-debug/
+build-stg*
 test/*
 !test/*.c
