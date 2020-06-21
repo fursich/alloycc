@@ -161,7 +161,8 @@ struct Node {
   // Function call
   char *funcname;
   Type *func_ty;
-  Node *args;
+  Var **args;
+  int nargs;
 
   // Goto or labeled statement
   char *label_name;

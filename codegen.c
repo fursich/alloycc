@@ -13,9 +13,9 @@ static void store(Type *ty);
 static int labelseq = 1;
 static int brkseq;
 static int contseq;
-static const char *argreg8[]  = { "dil", "sil", "dl", "cl", "r8b", "r9b" };
+static const char *argreg8[]  = { "dil", "sil", "dl", "cl", "r8l", "r9l" };
 static const char *argreg16[] = { "di",  "si",  "dx", "cx", "r8w", "r9w" };
-static const char *argreg32[] = { "edi", "esi", "edx", "ecx", "e8", "e9" };
+static const char *argreg32[] = { "edi", "esi", "edx", "ecx", "r8d", "r9d" };
 static const char *argreg64[] = { "rdi", "rsi", "rdx", "rcx", "r8", "r9" };
 static Function  *current_fn;
 
@@ -135,16 +135,20 @@ static void cast(Type *from, Type *to) {
   printf("  push rax\n");
 }
 
-static void load_args(Node *args) {
-  int argc = 0;
+static void load_args(Node *node) {
 
-  for(Node *cur = args; cur != NULL; cur = cur->next) {
-    gen_expr(cur);
-    argc++;
-  }
+  for(int i = 0; i < node->nargs; i++) {
+    Var *arg = node->args[i];
+    int sz = size_of(arg->ty);
 
-  for(int i = 0; i < argc; i++) {
-    printf("  pop %s\n", argreg64[argc - 1 - i]);
+    if (sz == 1)
+      printf("  movsx %s, byte ptr [rbp-%d]\n", argreg32[i], arg->offset);
+    else if (sz == 2)
+      printf("  movsx %s, word ptr [rbp-%d]\n", argreg32[i], arg->offset);
+    else if (sz == 4)
+      printf("  mov %s, dword ptr [rbp-%d]\n", argreg32[i], arg->offset);
+    else
+      printf("  mov %s, [rbp-%d]\n", argreg64[i], arg->offset);
   }
 }
 
@@ -274,7 +278,7 @@ static void gen_expr(Node *node) {
     return;
   }
   case ND_FUNCALL: {
-    load_args(node->args);
+    load_args(node);
 
     printf("  mov rax, 0\n");
     printf("  call %s\n", node->funcname);

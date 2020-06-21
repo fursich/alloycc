@@ -195,8 +195,6 @@ void generate_type(Node *node) {
 
   for(Node *nd = node->body; nd; nd = nd->next)
     generate_type(nd);
-  for(Node *nd = node->args; nd; nd = nd->next)
-    generate_type(nd);
 
   set_type_for_expr(node);
 }

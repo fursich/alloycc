@@ -133,7 +133,6 @@ static Node *unary(Token **rest, Token *tok);
 static Node *postfix(Token **rest, Token *tok);
 static Node *primary(Token **rest, Token *tok);
 static Node *funcall(Token **rest, Token *tok);
-static Node *arg_list(Token **rest, Token *tok, Type *param_ty);
 
 static void enter_scope() {
   scope_depth++;
@@ -2062,6 +2061,10 @@ static Node *primary(Token **rest, Token *tok) {
 }
 
 // funcall = ident "(" arg-list ")"
+// arg-list = "(" (assign ("," assign)*)? ")"
+//
+// foo(a, b, c) is compiled to ({t1=a; t2=b; t3=c; foo(t1, t2, t3)})
+// where t1, t2, and t3 are fresh (unnamed) local vars.
 static Node *funcall(Token **rest, Token *tok) {
   Token *start = tok;
   char *name = expect_ident(&tok, tok);
@@ -2077,26 +2080,17 @@ static Node *funcall(Token **rest, Token *tok) {
     ty = func_returning(ty_int);
   }
 
+  Node *node = new_node(ND_NULL_EXPR, tok);
+  Var **args = NULL;
+  int nargs = 0;
+  Type *param_ty = ty->params;
+
   tok = skip(tok, "(");
-  Node *funcall = new_node(ND_FUNCALL, start);
-  funcall->funcname = name;
-  funcall->func_ty = ty;
-  funcall->ty = ty->return_ty;
-  funcall->args = arg_list(&tok, tok, ty->params);
-  tok =  skip(tok, ")");
-
-  *rest = tok;
-  return funcall;
-}
-
-// arg-list = (assign (, assign)*)?
-static Node *arg_list(Token **rest, Token *tok, Type *param_ty) {
-  Node head = {0};
-  Node *cur = &head;
 
   while (!equal(tok, ")")) {
-    if (cur != &head)
+    if (nargs)
       tok =  skip(tok, ",");
+
     Node *arg = assign(&tok, tok);
     generate_type(arg);
 
@@ -2105,9 +2099,26 @@ static Node *arg_list(Token **rest, Token *tok, Type *param_ty) {
       param_ty = param_ty->next;
     }
 
-    cur = cur->next = arg;
-  }
+    Var *var = arg->ty->base
+             ? new_lvar("", pointer_to(arg->ty->base))
+             : new_lvar("", arg->ty);
 
-  *rest = tok;
-  return head.next;
+    args = realloc(args, sizeof(*args) * (nargs + 1));
+    args[nargs] = var;
+    nargs++;
+
+    Node *expr = new_node_binary(ND_ASSIGN, new_node_var(var, tok), arg, tok);
+    node = new_node_binary(ND_COMMA, node, expr, tok);
+  }
+  *rest = skip(tok, ")");
+
+  Node *funcall = new_node(ND_FUNCALL, start);
+  funcall->funcname = name;
+  funcall->func_ty = ty;
+  funcall->ty = ty->return_ty;
+  funcall->args = args;
+  funcall->nargs = nargs;
+
+  return new_node_binary(ND_COMMA, node, funcall, start);
 }
+
