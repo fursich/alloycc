@@ -30,7 +30,6 @@ EOF
     sed -i 's/\btrue\b/1/g' $BUILDDIR/$1
     sed -i 's/\bfalse\b/0/g' $BUILDDIR/$1
     sed -i 's/\bNULL\b/0/g' $BUILDDIR/$1
-    sed -i 's/, \.\.\.//g' $BUILDDIR/$1
 
     ./$COMPILER $BUILDDIR/$1 > $BUILDDIR/${1%.c}.s
     gcc -c -o $BUILDDIR/${1%.c}.o $BUILDDIR/${1%.c}.s

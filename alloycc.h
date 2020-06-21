@@ -185,6 +185,7 @@ struct Function {
   char *name;
   Var *params;
   bool is_static;
+  bool is_variadic;
 
   Node *node;
   Var *locals;
@@ -236,6 +237,7 @@ struct Type {
   // function
   Type *return_ty;
   Type *params;
+  bool is_variadic;
   Type *next;
 
   // array

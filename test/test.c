@@ -144,7 +144,16 @@ int counter() {
 _Bool true_fn();
 _Bool false_fn();
 
+int add_all1(int x, ...);
+int add_all3(int z, int b, int c, ...);
+
 int main() {
+
+  assert(6, add_all1(1,2,3,0), "add_all1(1,2,3,0)");
+  assert(5, add_all1(1,2,3,-1,0), "add_all1(1,2,3,-1,0)");
+
+  assert(6, add_all3(1,2,3,0), "add_all3(1,2,3,0)");
+  assert(5, add_all3(1,2,3,-1,0), "add_all3(1,2,3,-1,0)");
 
   assert(1, true_fn(), "true_fn()");
   assert(0, false_fn(), "false_fn()");

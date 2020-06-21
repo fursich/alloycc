@@ -91,7 +91,7 @@ static void gvar_initializer(Token **rest, Token *tok, Var *var);
 static Node *lvar_initializer(Token **rest, Token *tok, Var *var);
 
 static Function *funcdef(Token **rest, Token *tok);
-static Type *func_params(Token **rest, Token *tok);
+static Type *func_params(Token **rest, Token *tok, Type *ty);
 static Type *struct_decl(Token **rest, Token *tok);
 static Type *union_decl(Token **rest, Token *tok);
 
@@ -565,8 +565,7 @@ static Type *array_dimensions(Token **rest, Token *tok, Type *ty) {
 //             | ε
 static Type *type_suffix(Token **rest, Token *tok, Type *ty) {
   if (consume(&tok, tok, "(")) {
-    ty = func_returning(ty);
-    ty->params = func_params(&tok, tok);
+    ty = func_params(&tok, tok, ty);
     tok =  skip(tok, ")");
 
     *rest = tok;
@@ -1138,37 +1137,50 @@ static Function *funcdef(Token **rest, Token *tok) {
   return func;
 }
 
-// func-params = ("void" | param, ("," param)*)? ")"
+// func-params = "void"
+//             | "..."
+//             | param ("," param)* ("," "...")?
+//             | ε
 // param = typespec declarator
-static Type *func_params(Token **rest, Token *tok) {
+static Type *func_params(Token **rest, Token *tok, Type *ty) {
   if (equal(tok, "void") && equal(tok->next, ")")) {
     *rest = tok->next;
-    return NULL;
+    return func_returning(ty);
   }
 
   Type head = {0};
   Type *cur = &head;
+  bool is_variadic = false;
 
   while (!equal(tok, ")")) {
     if (cur != &head)
       tok =  skip(tok, ",");
 
+    if (consume(&tok, tok, "...")) {
+      is_variadic = true;
+      break;
+    }
+
     Token *start = tok;
     Type *basety = typespec(&tok, tok, NULL);
-    Type *ty = declarator(&tok, tok, basety);
+    Type *ty2 = declarator(&tok, tok, basety);
     
     // "array of T" is converted to "pointer of T" only in parameter
     // context. example: *argv[] is converted to **argv by this.
-    if (ty->kind == TY_ARRAY) {
-      Token *name = ty->ident;
-      ty = pointer_to(ty->base);
-      ty->ident = name;
+    if (ty2->kind == TY_ARRAY) {
+      Token *name = ty2->ident;
+      ty2 = pointer_to(ty2->base);
+      ty2->ident = name;
     }
-    cur = cur->next = copy_ty(ty);
+    cur = cur->next = copy_ty(ty2);
   }
 
+  ty = func_returning(ty);
+  ty->params = head.next;
+  ty->is_variadic = is_variadic;
+
   *rest = tok;
-  return head.next;
+  return ty;
 }
 
 // block_stmt = stmt*

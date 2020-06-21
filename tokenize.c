@@ -207,6 +207,7 @@ static Token *read_operators(Token *cur, char *start) {
   static const char *multi_letter_ops[] = {
     "<<=",
     ">>=",
+    "...",
 
     "==",
     "!=",
