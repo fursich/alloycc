@@ -1,5 +1,7 @@
-# 9CC compiler
+# ALLOYCC - a c compiler written in c
 
-A training repository for alloyc project, a fantasitc in-depth tutorial document for implementing a self-host c compiler.
-For the original document, refer to: https://www.sigbus.info/compilerbook
+A training project to implement a simple, self-hosting c compiler.
 
+Original ideas and code samples are taken from the fantasitc in-depth tutorial shown below:
+https://www.sigbus.info/compilerbook
+https://github.com/rui314/chibicc
