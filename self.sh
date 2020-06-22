@@ -20,6 +20,7 @@ typedef struct {
 void *malloc(long size);
 void *calloc(long nmenb, long size);
 void *realloc(void *buf, long size);
+
 int *__errno_location();
 char *strerror(int errnum);
 FILE *fopen(char *pathname, char *mode);
@@ -27,11 +28,26 @@ long fread(void *ptr, long size, long nmemb, FILE *stream);
 int fclose(FILE *fp);
 int feof(FILE *stream);
 static void assert() {}
-int strcmp(char *s1, char *s2);
+void exit(int status);
+
 static void va_end(va_list ap) {}
 int printf(char *fmt, ...);
 int sprintf(char *buf, char *fmt, ...);
+int fprintf(FILE *stream, char *fmt);
+int vfprintf(FILE *stream, char *fmt, va_list arg);
+
+int strcmp(char *s1, char *s2);
+long strlen(char *p);
 int strncmp(char *p, char *q);
+int strncasecmp(char *p, char *q, unsigned long count);
+void *memcpy(char *dst, char *src, long n);
+char *strndup(char *p, long n);
+char *strstr(char *haystack, char *needle);
+unsigned long int strtoul(char *str, char **endptr, int base);
+
+int isspace(int c);
+int ispunct(int c);
+int isdigit(int c);
 
 EOF
 
@@ -56,4 +72,4 @@ alloycc main.c
 alloycc type.c
 alloycc parse.c
 alloycc codegen.c
-cc tokenize.c
+alloycc tokenize.c
