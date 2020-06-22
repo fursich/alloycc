@@ -29,6 +29,7 @@ int feof(FILE *stream);
 static void assert() {}
 int strcmp(char *s1, char *s2);
 static void va_end(va_list ap) {}
+int printf(char *fmt, ...);
 int sprintf(char *buf, char *fmt, ...);
 int strncmp(char *p, char *q);
 
@@ -54,5 +55,5 @@ cc() {
 alloycc main.c
 alloycc type.c
 alloycc parse.c
-cc codegen.c
+alloycc codegen.c
 cc tokenize.c
