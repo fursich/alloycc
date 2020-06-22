@@ -2094,7 +2094,11 @@ static Node *primary(Token **rest, Token *tok) {
     return new_node_var(var, start);
   }
 
-  return new_node_num(expect_number(rest, tok), start);
+  Type *num_ty = tok->ty;
+  Node *node = new_node_num(expect_number(rest, tok), start);
+  node->ty = num_ty;
+
+  return node;
 }
 
 // funcall = ident "(" arg-list ")"

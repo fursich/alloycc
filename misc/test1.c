@@ -7,5 +7,6 @@ int main() {
   printf("%ld\n", (long) (unsigned int)0xffffffff);
   printf("%ld\n", (long) ((unsigned int)1 * (char)-1));   // 0xffffffff
   printf("%ld\n", (long) ((unsigned short)1 * (char)-1)); // 1 (unsigned short will be up-cased as signed int)
+  printf("%ld\n", 0xffffffffff);
   printf("%ld\n", ((signed char)-1) * (unsigned short)1);
 }

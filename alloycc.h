@@ -31,6 +31,7 @@ struct Token {
   TokenKind kind;
   Token *next;
   long val;
+  Type *ty; // Used if TK_NUM
   char *str;
   int len;
 

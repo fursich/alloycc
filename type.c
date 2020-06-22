@@ -114,7 +114,10 @@ static void usual_arith_conv(Node **lhs, Node **rhs) {
 static void set_type_for_expr(Node *node) {
   switch(node->kind) {
     case ND_NUM:
-      node->ty = (node->val == (int)node->val) ? ty_int : ty_long;
+      // for in-code numbers, proper types must already have been inferred at tokeninizer.
+      // this is to catch the remaining "small numbers" that are generated internally.
+      // (e.g. `++foo` is parsed as `foo + 1`, which requires a new ND_NUM that holds 1)
+      node->ty = ty_int;
       return;
     case ND_ADD:
     case ND_SUB:

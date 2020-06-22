@@ -238,8 +238,9 @@ static void gen_expr(Node *node) {
     store(node->ty);
     return;
   case ND_NUM:
-    if (node->val == (int)node->val) {
-      printf("  push %lu\n", node->val);
+    if (node->ty->kind == TY_LONG) {
+      printf("  movabs rax, %lu\n", node->val);
+      printf("  push rax\n");
     } else {
       printf("  mov rax, %lu\n", node->val);
       printf("  push rax\n");
