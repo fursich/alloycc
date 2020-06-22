@@ -69,15 +69,18 @@ static void load(Type *ty) {
     return;
   }
 
-  int sz = size_of(ty);
   printf("  pop rax\n");
 
+  int sz = size_of(ty);
+  char *insn = ty->is_unsigned ? "movzx" : "movsx";
+
   if (sz == 1)
-    printf("  movsx rax, byte ptr [rax]\n");
+    printf("  %s rax, byte ptr [rax]\n", insn);
   else if (sz == 2)
-    printf("  movsx rax, word ptr [rax]\n");
+    printf("  %s rax, word ptr [rax]\n", insn);
   else if (sz == 4)
-    printf("  movsxd rax, dword ptr [rax]\n");
+    // NOTE: upper 32-bit is 0-extended (care about proper sign if casting as 64-bit)
+    printf("  mov eax, dword ptr [rax]\n");
   else
     printf("  mov rax, [rax]\n");
 
@@ -123,14 +126,18 @@ static void cast(Type *from, Type *to) {
     return;
   }
 
+  char *insn = to->is_unsigned ? "movzx" : "movsx";
+
   if (size_of(to) == 1)
-    printf("  movsx rax, al\n");
+    printf("  %s rax, al\n", insn);
   else if (size_of(to) == 2)
-    printf("  movsx rax, ax\n");
+    printf("  %s rax, ax\n", insn);
   else if  (size_of(to) == 4)
+    printf("  mov eax, eax\n"); // upper 32-bit is cleared
+  else if  (is_integer(from) && size_of(from) < 8 && !from->is_unsigned)
     printf("  movsxd rax, eax\n");
-  else if  (is_integer(from) && size_of(from) < 8)
-    printf("  movsx rax, eax\n");
+  // NOTE: casting not needed for the unsigned integers, as they all are supposed to zero extended when loaded
+  // same applies for singed integers, expect for 32bit doubleword types that are always zero-extended
 
   printf("  push rax\n");
 }
@@ -141,10 +148,12 @@ static void load_args(Node *node) {
     Var *arg = node->args[i];
     int sz = size_of(arg->ty);
 
+    char *insn = arg->ty->is_unsigned ? "movzx" : "movsx";
+
     if (sz == 1)
-      printf("  movsx %s, byte ptr [rbp-%d]\n", argreg32[i], arg->offset);
+      printf("  %s %s, byte ptr [rbp-%d]\n", insn, argreg32[i], arg->offset);
     else if (sz == 2)
-      printf("  movsx %s, word ptr [rbp-%d]\n", argreg32[i], arg->offset);
+      printf("  %s %s, word ptr [rbp-%d]\n", insn, argreg32[i], arg->offset);
     else if (sz == 4)
       printf("  mov %s, dword ptr [rbp-%d]\n", argreg32[i], arg->offset);
     else
@@ -173,15 +182,25 @@ static void store_args(Var *params) {
 }
 
 static void divmod(Node *node, char *rs, char *rd, char *res64, char *res32) {
-    if (size_of(node->ty) == 8) {
+  if (size_of(node->ty) == 8) {
     printf("  mov rax, %s\n", rd);
-    printf("  cqo\n");
-    printf("  idiv %s\n", rs);
+    if (node->ty->is_unsigned) {
+      printf("  mov rdx, 0\n"); // zero-extention
+      printf("  div %s\n", rs);
+    } else {
+      printf("  cqo\n");
+      printf("  idiv %s\n", rs);
+    }
     printf("  mov %s, %s\n", rd, res64);
   } else {
     printf("  mov eax, %s\n", rd);
-    printf("  cdq\n");
-    printf("  idiv %s\n", rs);
+    if (node->ty->is_unsigned) {
+      printf("  mov edx, 0\n"); // zero-extention
+      printf("  div %s\n", rs);
+    } else {
+      printf("  cdq\n");
+      printf("  idiv %s\n", rs);
+    }
     printf("  movsxd rdi, %s\n", res32); // NOTE: result extended to 64-bit
   }
 }
@@ -369,7 +388,7 @@ static void gen_expr(Node *node) {
     printf("  sub %s, %s\n", rd, rs);
     break;
   case ND_MUL:
-    printf("  imul %s, %s\n", rd, rs);
+    printf("  imul %s, %s\n", rd, rs); // can use imul regardless operands' signs
     break;
   case ND_DIV:
     divmod(node, rs, rd, "rax", "eax");
@@ -398,12 +417,18 @@ static void gen_expr(Node *node) {
     break;
   case ND_LT:
     printf("  cmp %s, %s\n", rd, rs);
-    printf("  setl al\n");
+    if (node->lhs->ty->is_unsigned)
+      printf("  setb al\n");
+    else
+      printf("  setl al\n");
     printf("  movzx %s, al\n", rd);
     break;
   case ND_LE:
     printf("  cmp %s, %s\n", rd, rs);
-    printf("  setle al\n");
+    if (node->lhs->ty->is_unsigned)
+     printf("  setbe al\n");
+    else
+     printf("  setle al\n");
     printf("  movzx %s, al\n", rd);
     break;
   case ND_SHL:
@@ -412,7 +437,10 @@ static void gen_expr(Node *node) {
     break;
   case ND_SHR:
     printf("  mov rcx, rsi\n");   // make sure that rcx contains all possible source bits from rs (rsi / esi)
-    printf("  sar %s, cl\n", rd);
+    if (node->lhs->ty->is_unsigned)
+      printf("  shr %s, cl\n", rd);
+    else
+      printf("  sar %s, cl\n", rd);
     break;
   default:
     error_tok(node->token, "invalid expression");
