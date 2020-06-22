@@ -167,6 +167,8 @@ static bool is_keyword(Token *tok) {
     "_Bool",
     "enum",
 
+    "signed",
+
     "char",
     "short",
     "int",
