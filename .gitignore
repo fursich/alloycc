@@ -4,5 +4,10 @@ tmp.*
 tmp
 *.o
 build-stg*
+
 test/*
 !test/*.c
+
+misc/*
+!misc/*.c
+!misc/*.sh
