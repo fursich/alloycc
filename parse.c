@@ -176,6 +176,7 @@ static Function *new_function(Type *ty, VarAttr *attr) {
   Function *func = calloc(1, sizeof(Function));
   func->name = get_identifier(ty->ident);
   func->is_static = attr->is_static;
+  func->is_variadic= ty->is_variadic;
   // TODO: consider return type: func->return_ty = ty;
   return func;
 }
@@ -363,7 +364,10 @@ Node *new_node_cast(Node *expr, Type *ty) {
 
 // program = (funcdef | global-var)*
 Program *parse(Token *tok) {
+  // add built-if functon types
+  new_gvar("__builtin_va_start", func_returning(ty_void), true, false);
 
+  // read source code until EOF
   Function head = {0};
   Function *cur = &head;
   globals = NULL;

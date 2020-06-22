@@ -186,6 +186,25 @@ static void divmod(Node *node, char *rs, char *rd, char *res64, char *res32) {
   }
 }
 
+static void builtin_va_start(Node *node) {
+  int n = 0;
+  for (Var *var = current_fn->params; var; var = var->next)
+    n++;
+
+  // va_list given as the first argument
+  printf("  mov rax, [rbp-%d]\n", node->args[0]->offset);
+  // set gp_offset as n * 8
+  // * gp_offset holds the offset in bytes from reg_save_area to the place
+  //   where the next available general purpose argument register is saved
+  printf("  mov dword ptr [rax], %d\n", n * 8);
+
+  // set reg_save_area as rbp-80
+  printf("  mov [rax+16], rbp\n");
+  printf("  sub qword ptr [rax+16], 80\n");
+  // return with void value
+  printf("  sub rsp, 8\n");
+}
+
 static void gen_expr(Node *node) {
   printf(".loc 1 %d\n", node->token->line_no);
 
@@ -278,10 +297,24 @@ static void gen_expr(Node *node) {
     return;
   }
   case ND_FUNCALL: {
+    if (!strcmp(node->funcname, "__builtin_va_start")) {
+      builtin_va_start(node);
+      return;
+    }
+
     load_args(node);
+
+    // save caller-saved registers
+    printf("  push r10\n");
+    printf("  push r11\n");
 
     printf("  mov rax, 0\n");
     printf("  call %s\n", node->funcname);
+
+    // restore caller-saved registers
+    printf("  pop r11\n");
+    printf("  pop r10\n");
+
     // According to The System V x86-64 ABI, a function that returns a boolean is
     // required to set the lower 8 bits only.
     // Hense, the upper 56 bits might contain arbitary values.
@@ -590,7 +623,22 @@ static void emit_text(Program *prog) {
     // prologue
     printf("  push rbp\n");
     printf("  mov rbp, rsp\n");
-    printf("  sub rsp, %d\n", fn->stack_size); // TODO: reserve registers (R12-R15) as well
+    printf("  sub rsp, %d\n", fn->stack_size);
+    // preserve callee-saved registers
+    printf("  mov [rbp-8], r12\n");
+    printf("  mov [rbp-16], r13\n");
+    printf("  mov [rbp-24], r14\n");
+    printf("  mov [rbp-32], r15\n");
+
+    // save arg registers if function is variadic
+    if (fn->is_variadic) {
+      printf("  mov [rbp-80], rdi\n");
+      printf("  mov [rbp-72], rsi\n");
+      printf("  mov [rbp-64], rdx\n");
+      printf("  mov [rbp-56], rcx\n");
+      printf("  mov [rbp-48], r8\n");
+      printf("  mov [rbp-40], r9\n");
+    }
 
     store_args(fn->params);
 
@@ -599,6 +647,11 @@ static void emit_text(Program *prog) {
 
     // epilogue
     printf(".L.return.%s:\n", fn->name);
+    // restore callee-saved registers
+    printf("  mov r12, [rbp-8]\n");
+    printf("  mov r13, [rbp-16]\n");
+    printf("  mov r14, [rbp-24]\n");
+    printf("  mov r15, [rbp-32]\n");
     printf("  mov rsp, rbp\n");
     printf("  pop rbp\n");
 
