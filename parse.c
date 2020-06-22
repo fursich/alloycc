@@ -302,6 +302,13 @@ static Node *new_node_num(long val, Token *tok) {
   return node;
 }
 
+static Node *new_node_num_ulong(long val, Token *tok) {
+  Node *node = new_node(ND_NUM, tok);
+  node->val = val;
+  node->ty = ty_ulong;
+  return node;
+}
+
 static Node *new_node_add(Node *lhs, Node *rhs, Token *tok) {
   generate_type(lhs);
   generate_type(rhs);
@@ -2071,20 +2078,20 @@ static Node *primary(Token **rest, Token *tok) {
     if (equal(tok, "(") && is_typename(tok->next)) {
       Type *ty = typename(&tok, tok->next);
       *rest = skip(tok, ")");
-      return new_node_num(size_of(ty), tok);
+      return new_node_num_ulong(size_of(ty), tok);
     }
 
     Node *node = unary(&tok, tok);
     generate_type(node);
     *rest = tok;
-    return new_node_num(size_of(node->ty), start);
+    return new_node_num_ulong(size_of(node->ty), start);
   }
 
   if (consume(&tok, tok, "alignof")) {
     tok = skip(tok, "(");
     Type *ty = typename(&tok, tok);
     *rest = skip(tok, ")");
-    return new_node_num(ty->align, tok);
+    return new_node_num_ulong(ty->align, tok);
   }
 
   if (tok->kind == TK_STR) {

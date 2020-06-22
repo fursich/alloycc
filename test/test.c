@@ -164,6 +164,11 @@ char *fmt(char *buf, char *fmt, ...) {
 
 int main() {
 
+  assert(1, sizeof(char) << 31 >> 31, "sizeof(char) << 31 >> 31");
+  assert(1, sizeof(char) << 63 >> 63, "sizeof(char) << 63 >> 63");
+  assert(1, alignof(char) << 31 >> 31, "alignof(char) << 31 >> 31");
+  assert(1, alignof(char) << 63 >> 63, "alignof(char) << 63 >> 63");
+
   assert(4, sizeof(0), "sizeof(0)");
   assert(8, sizeof(0L), "sizeof(0L)");
   assert(8, sizeof(0LU), "sizeof(0LU)");
