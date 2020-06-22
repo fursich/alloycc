@@ -153,6 +153,9 @@ struct Node {
   Node *init;
   Node *inc;
 
+  // assignment
+  bool is_init;
+
   // block or statement espression
   Node *body;
 
@@ -232,6 +235,7 @@ struct Type {
   int align;          // alignment
   bool is_unsigned;   // unsigned or signed
   bool is_incomplete; // incomplete type
+  bool is_const;      // const
   Type *base;
 
   // used for declaration

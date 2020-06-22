@@ -162,6 +162,7 @@ static bool is_keyword(Token *tok) {
     "_Alignas",
     "extern",
     "static",
+    "const",
 
     "void",
     "_Bool",

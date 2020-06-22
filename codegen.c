@@ -231,6 +231,8 @@ static void gen_expr(Node *node) {
   case ND_ASSIGN:
     if (node->ty->kind == TY_ARRAY)
       error_tok(node->token, "not an lvalue");
+    if (node->lhs->ty->is_const && !node->is_init)
+      error_tok(node->token, "cannot assign to a const variable");
 
     gen_addr(node->lhs);
     gen_expr(node->rhs);

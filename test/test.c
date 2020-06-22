@@ -164,6 +164,14 @@ char *fmt(char *buf, char *fmt, ...) {
 
 int main() {
 
+  { const x; }
+  { int const x; }
+  { const int x; }
+  { const int const const x; }
+  assert(5, ({ const x = 5; x; }), "({ const x = 5; x; })");
+  assert(8, ({ const x = 8; int *const y=&x; *y; }), "({ const x = 8; int *const y=&x; *y; })");
+  assert(6, ({ const x = 6; *(const * const)&x; }), "({ const x = 6; *(const * const)&x; })");
+
   assert(4, ({ char x[(-1>>31)+5]; sizeof(x); }), "({ char x[(-1>>31)+5]; sizeof(x); })");
   assert(255, ({ char x[(unsigned char)0xffffffff]; sizeof(x); }), "({ char x[(unsigned char)0xffffffff]; sizeof(x); })");
   assert(0x800f, ({ char x[(unsigned short)0xffff800f]; sizeof(x); }), "({ char x[(unsigned short)0xffff800f]; sizeof(x); })");
