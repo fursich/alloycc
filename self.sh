@@ -2,6 +2,7 @@
 set -e
 COMPILER=$1
 BUILDDIR=$2
+TARGET=$3
 
 alloycc() {
     cat <<EOF > $BUILDDIR/$1
@@ -60,7 +61,7 @@ EOF
     sed -i 's/\bNULL\b/0/g' $BUILDDIR/$1
     sed -i 's/\bva_start\b/__builtin_va_start/g' $BUILDDIR/$1
 
-    ./$COMPILER $BUILDDIR/$1 > $BUILDDIR/${1%.c}.s
+    (cd $BUILDDIR; ../$COMPILER $1 > ${1%.c}.s)
     gcc -c -o $BUILDDIR/${1%.c}.o $BUILDDIR/${1%.c}.s
 }
 
@@ -73,3 +74,5 @@ alloycc type.c
 alloycc parse.c
 alloycc codegen.c
 alloycc tokenize.c
+
+(cd $BUILDDIR; gcc -static -o ../$TARGET *.o)
