@@ -391,7 +391,11 @@ Program *parse(Token *tok) {
     // "typedef" basety foo[3], *bar, ..
     if (attr.is_typedef) {
       for(;;) {
+        if (!ty->ident)
+          error_tok(ty->name_pos, "typedef name omitted");
+
         push_scope(get_identifier(ty->ident))->type_def =ty;
+
         if (consume(&tok, tok, ";"))
           break;
         tok =  skip(tok, ",");
@@ -410,6 +414,8 @@ Program *parse(Token *tok) {
 
     // global variable = typespec declarator ("," declarator)* ";"
     for (;;) {
+      if (!ty->ident)
+        error_tok(ty->name_pos, "variable name omitted");
       Var *var = new_gvar(get_identifier(ty->ident), ty, attr.is_static, !attr.is_extern);
       if (attr.align)
         var->align = attr.align;
@@ -652,7 +658,7 @@ static Type *pointers(Token **rest, Token *tok, Type *ty) {
   return ty;
 }
 
-// declarator = pointers ("(" declarator ")" | ident) type-suffix
+// declarator = pointers ("(" declarator ")" | ident?) type-suffix
 static Type *declarator(Token **rest, Token *tok, Type *ty) {
   ty = pointers(&tok, tok, ty);
 
@@ -665,11 +671,17 @@ static Type *declarator(Token **rest, Token *tok, Type *ty) {
     return new_ty;
   }
 
-  Token *ident = tok;
-  expect_ident(&tok, tok);
+  Token *name_pos = tok;
+  Token *ident = NULL;
+
+  if (tok->kind == TK_IDENT) {
+    ident = tok;
+    tok = tok->next;
+  }
 
   ty = type_suffix(rest, tok, ty);
   ty->ident = ident;
+  ty->name_pos = name_pos;
 
   return ty;
 }
@@ -781,6 +793,9 @@ static Node *declaration(Token **rest, Token *tok) {
 
     Token *start = tok;
     Type *ty = declarator(&tok, tok, basety);
+
+    if (!ty->ident)
+      error_tok(ty->name_pos, "variable declared void");
     if (ty->kind == TY_VOID)
       error_tok(start, "variable declared void");
 
@@ -1195,10 +1210,16 @@ static Function *funcdef(Token **rest, Token *tok) {
   VarAttr attr = {0};
   Type *basety = typespec(&tok, tok, &attr);
   Type *ty = declarator(&tok, tok, basety);
+
+  if (!ty->ident)
+    error_tok(ty->name_pos, "function name omitted");
+
   Function *func = new_function(ty, &attr);
 
   enter_scope();
   for (Type *t = ty->params; t; t = t->next) {
+    if (!t->ident)
+      error_tok(t->name_pos, "parameter name omitted");
     Var *var = new_lvar(get_identifier(t->ident), t); // TODO: check if this registratoin order make sense (first defined comes first, latter could overshadow the earlier)
   }
 

@@ -6,7 +6,7 @@
 int printf();
 int exit();
 int strcmp(char *p, char *q);
-int memcmp(char *p, char *q);
+int memcmp(char *, char *);
 
 // test function
 int assert(long expected, long actual, char *code) {

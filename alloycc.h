@@ -116,6 +116,7 @@ struct Var {
   Var *next;
   char *name;
   Type *ty;
+  Token *tok;     // representative token
   bool is_local;
   int align;
 
@@ -240,6 +241,7 @@ struct Type {
 
   // used for declaration
   Token *ident;
+  Token *name_pos;
 
   // function
   Type *return_ty;
