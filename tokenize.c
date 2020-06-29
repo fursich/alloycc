@@ -163,6 +163,7 @@ static bool is_keyword(Token *tok) {
     "extern",
     "static",
     "const",
+    "volatile",
 
     "void",
     "_Bool",

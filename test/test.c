@@ -164,6 +164,12 @@ char *fmt(char *buf, char *fmt, ...) {
 
 int main() {
 
+  { volatile x; }
+  { int volatile x; }
+  { volatile int x; }
+  { volatile int volatile volatile x; }
+  { int volatile * volatile volatile x; }
+
   { const x; }
   { int const x; }
   { const int x; }
