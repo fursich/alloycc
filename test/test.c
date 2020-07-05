@@ -176,6 +176,7 @@ int (*fnptr(void))(int) {
 }
 
 int main() {
+  assert(5, (**sum2)(2,3), "(**sum2)(2,3)");
 
   assert(5, (sum2)(2,3), "(sum2)(2,3)");
   assert(5, (&sum2)(2,3), "(&sum2)(2,3)");

@@ -185,6 +185,12 @@ static void set_type_for_expr(Node *node) {
     }
     case ND_DEREF: {
       Type *ty = node->lhs->ty;
+
+      if (ty->kind == TY_FUNC) {
+        *node = *node->lhs;
+        return;
+      }
+
       if (!is_pointer_like(ty))
         error_tok(node->token, "invalid pointer dereference");
       if (ty->base->kind == TY_VOID)
