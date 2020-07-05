@@ -86,12 +86,21 @@ int inc(int n) {
   return n + 1;
 }
 
+int sum2(int x, int y) {
+  return x + y;
+}
+
 int sum3(int i, int j, int k) {
   return i + j + k;
 }
 
 int sub2(int i, int j) {
   return i - j;
+}
+
+int ret3(void) {
+  return 3;
+  return 5;
 }
 
 int fibo(int n) {
@@ -162,7 +171,16 @@ char *fmt(char *buf, char *fmt, ...) {
   vsprintf(buf, fmt, ap);
 }
 
+int (*fnptr(void))(int) {
+  return ret3;
+}
+
 int main() {
+
+  assert(5, (sum2)(2,3), "(sum2)(2,3)");
+  assert(5, (&sum2)(2,3), "(&sum2)(2,3)");
+  assert(7, ({ int (*fn)(int,int) = sum2; fn(2,5); }), "({ int (*fn)(int,int) = sum2; fn(2,5); })");
+  assert(3, fnptr()(), "fnptr()()");
 
   { volatile x; }
   { int volatile x; }

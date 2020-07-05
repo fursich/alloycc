@@ -132,7 +132,7 @@ static Node *cast(Token **rest, Token *tok);
 static Node *unary(Token **rest, Token *tok);
 static Node *postfix(Token **rest, Token *tok);
 static Node *primary(Token **rest, Token *tok);
-static Node *funcall(Token **rest, Token *tok);
+static Node *funcall(Token **rest, Token *tok, Node *fn);
 
 static void enter_scope() {
   scope_depth++;
@@ -2049,13 +2049,26 @@ static Node *new_inc_dec(Node *node, Token *tok, int addend) {
   return new_node_binary(ND_COMMA, expr1, new_node_binary(ND_COMMA, expr2, expr3, tok), tok);
 }
 
-// postfix = primary ("[" expr "]" | "." ident | "->" ident | "++" | "--")*
+// postfix = ident "(" func-args ")" postfix-tail*
+//         | primary postfix-tail*
+//
+// postfix-tail = "[" expr "]"
+//              | "(" func-args ")"
+//              | "." ident
+//              | "->" ident
+//              | "++"
+//              | "--"
 static Node *postfix(Token **rest, Token *tok) {
 
   Token *start = tok;
   Node *node = primary(&tok, tok);
 
   for (;;) {
+    if (equal(tok, "("))  {
+      node = funcall(&tok, tok, node);
+      continue;
+    }
+
     if (consume(&tok, tok, "["))  {
       // x[y] is syntax sugar for *(x + y)
       Node *idx = expr(&tok, tok);
@@ -2097,7 +2110,7 @@ static Node *postfix(Token **rest, Token *tok) {
 //           | "sizeof" "(" typename ")"
 //           | "sizeof" unary
 //           | "alignof" "(" typename ")"
-//           | ident ("(" arg-list ")")?
+//           | ident
 //           | str
 //           | num
 static Node *primary(Token **rest, Token *tok) {
@@ -2126,24 +2139,26 @@ static Node *primary(Token **rest, Token *tok) {
   }
 
   if (tok->kind == TK_IDENT) {
-    if (equal(tok->next, "("))
-      return funcall(rest, tok);
-
     // variable or enum constant
     Token *start = tok;
     char *name = expect_ident(rest, tok);
 
     VarScope *sc = lookup_var(name);
-    if (!sc || (!sc->var && !sc->enum_ty))
-      error_tok(start, "undefined variable");
 
-    Node *node;
-    if (sc->var)
-      node = new_node_var(sc->var, start);
-    else
-      node = new_node_num(sc->enum_val, start);
+    if (sc) {
+      if (sc->var)
+        return new_node_var(sc->var, start);
+      if (sc->enum_ty)
+        return new_node_num(sc->enum_val, start);
+    }
 
-    return node;
+    if (equal(tok->next, "(")) {
+      warn_tok(start, "implicit declaration of a function");
+      Var *var = new_gvar(name, func_returning(ty_int), true, false);
+      return new_node_var(var, start);
+    }
+
+    error_tok(start, "undefined variable");
   }
 
   if (consume(&tok, tok, "sizeof")) {
@@ -2180,29 +2195,23 @@ static Node *primary(Token **rest, Token *tok) {
   return node;
 }
 
-// funcall = ident "(" arg-list ")"
-// arg-list = "(" (assign ("," assign)*)? ")"
+// funcall = "(" arg-list ")"
+// arg-list = (assign ("," assign)*)?
 //
 // foo(a, b, c) is compiled to ({t1=a; t2=b; t3=c; foo(t1, t2, t3)})
 // where t1, t2, and t3 are fresh (unnamed) local vars.
-static Node *funcall(Token **rest, Token *tok) {
+static Node *funcall(Token **rest, Token *tok, Node *fn) {
   Token *start = tok;
-  char *name = expect_ident(&tok, tok);
+  generate_type(fn);
 
-  VarScope *sc = lookup_var(name);
-  Type *ty;
-  if (sc) {
-    if (!sc->var || sc->var->ty->kind != TY_FUNC)
-      error_tok(start, "not a function");
-    ty = sc->var->ty;
-  } else {
-    warn_tok(start, "implicit declaration of a function");
-    ty = func_returning(ty_int);
-  }
+  if (fn->ty->kind != TY_FUNC &&
+      !(fn->ty->kind == TY_PTR && fn->ty->base->kind == TY_FUNC))
+    error_tok(start, "not a function");
 
   Node *node = new_node(ND_NULL_EXPR, tok);
   Var **args = NULL;
   int nargs = 0;
+  Type *ty = (fn->ty->kind == TY_FUNC) ? fn->ty : fn->ty->base;
   Type *param_ty = ty->params;
 
   tok = skip(tok, "(");
@@ -2232,8 +2241,7 @@ static Node *funcall(Token **rest, Token *tok) {
   }
   *rest = skip(tok, ")");
 
-  Node *funcall = new_node(ND_FUNCALL, start);
-  funcall->funcname = name;
+  Node *funcall = new_node_unary(ND_FUNCALL, fn, start);
   funcall->func_ty = ty;
   funcall->ty = ty->return_ty;
   funcall->args = args;

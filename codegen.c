@@ -61,7 +61,7 @@ static void gen_addr(Node *node) {
 }
 
 static void load(Type *ty) {
-  if (ty->kind == TY_ARRAY || ty->kind == TY_STRUCT) {
+  if (ty->kind == TY_ARRAY || ty->kind == TY_STRUCT || ty->kind == TY_FUNC) {
     // NOOP for array type node
     // an entire array cannot be "loaded". Instead the variable
     // is interperted as the address of the first element
@@ -319,7 +319,8 @@ static void gen_expr(Node *node) {
     return;
   }
   case ND_FUNCALL: {
-    if (!strcmp(node->funcname, "__builtin_va_start")) {
+    if (node->lhs->kind == ND_VAR &&
+        !strcmp(node->lhs->var->name, "__builtin_va_start")) {
       builtin_va_start(node);
       return;
     }
@@ -330,8 +331,11 @@ static void gen_expr(Node *node) {
     printf("  push r10\n");
     printf("  push r11\n");
 
+    gen_expr(node->lhs);  // function address
+    printf("  pop r10\n");
+
     printf("  mov rax, 0\n");
-    printf("  call %s\n", node->funcname);
+    printf("  call r10\n");
 
     // restore caller-saved registers
     printf("  pop r11\n");

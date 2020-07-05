@@ -172,15 +172,17 @@ static void set_type_for_expr(Node *node) {
         node->ty = node->then->ty;
       }
       return;
-    case ND_ADDR:
-      if (node->lhs->ty->kind == TY_ARRAY)
+    case ND_ADDR: {
+      Type *ty = node->lhs->ty;
+      if (ty->kind == TY_ARRAY)
         // adddress of an element of array should be pointer to the element type
         //e.g. for char arr[2],  char *p = &arr[1] (p is a pointer to char, the element type)
-        node->ty = pointer_to(node->lhs->ty->base);
+        node->ty = pointer_to(ty->base);
       else
-        // otherwise, address type should be a pointer to the give type
-        node->ty = pointer_to(node->lhs->ty);
+        // otherwise, address type should be a pointer to the given type
+        node->ty = pointer_to(ty);
       return;
+    }
     case ND_DEREF: {
       Type *ty = node->lhs->ty;
       if (!is_pointer_like(ty))
