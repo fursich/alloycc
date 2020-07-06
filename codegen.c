@@ -111,14 +111,33 @@ static void store(Type *ty) {
   printf("  push rsi\n");
 }
 
+static void cmp_zero(Type *ty) {
+  if (ty->kind == TY_FLOAT) {
+    // (sort of) equivalent operations to 'pop xmm1'
+    printf("  movss xmm1, DWORD PTR [rsp]\n");
+    printf("  add rsp, 8\n");
+    // compare against zero as float
+    printf("  xorps xmm0, xmm0\n");
+    printf("  ucomiss xmm0, xmm1\n");
+  } else if (ty->kind == TY_DOUBLE) {
+    // (sort of) equivalent operations to 'pop xmm1'
+    printf("  movsd xmm1, QWORD PTR [rsp]\n");
+    printf("  add rsp, 8\n");
+    // compare against zero as double
+    printf("  xorpd xmm0, xmm0\n");
+    printf("  ucomisd xmm0, xmm1\n");
+  } else {
+    printf("  pop rax\n");
+    printf("  cmp rax, 0\n");
+  }
+}
+
 static void cast(Type *from, Type *to) {
   if (to->kind == TY_VOID)
     return;
 
-  printf("  pop rax\n");
-
   if (to->kind == TY_BOOL) {
-    printf("  cmp rax, 0\n");
+    cmp_zero(from);
     printf("  setne al\n");
     printf("  movsx rax, al\n");
 
@@ -126,8 +145,51 @@ static void cast(Type *from, Type *to) {
     return;
   }
 
-  char *insn = to->is_unsigned ? "movzx" : "movsx";
+  if (from->kind == TY_FLOAT) {
+    if (to->kind == TY_FLOAT)
+      return;
 
+    if (to->kind == TY_DOUBLE) {
+      printf("  cvtss2sd xmm0, DWORD PTR [rsp]\n");
+      printf("  movsd QWORD PTR [rsp], xmm0\n");
+    } else {
+      printf("  cvttss2si rax, DWORD PTR [rsp]\n");
+      printf("  mov [rsp], rax\n");
+    }
+    return;
+  }
+
+  if (from->kind == TY_DOUBLE) {
+    if (to->kind == TY_DOUBLE)
+      return;
+
+    if (to->kind == TY_FLOAT) {
+      printf("  cvtsd2ss xmm0, QWORD PTR [rsp]\n");
+      printf("  mov QWORD PTR [rsp], 0\n");         // clear full 64bit before pushing 32bit value
+      printf("  movss DWORD PTR [rsp], xmm0\n");
+    } else {
+      printf("  cvttsd2si rax, QWORD PTR [rsp]\n");
+      printf("  mov [rsp], rax\n");
+    }
+    return;
+  }
+
+  if (to->kind == TY_FLOAT) {
+    printf("  cvtsi2ss xmm0, QWORD PTR [rsp]\n");
+    printf("  mov QWORD PTR [rsp], 0\n");         // clear full 64bit before pushing 32bit value
+    printf("  movdqu DWORD PTR [rsp], xmm0\n");
+    return;
+  }
+
+  if (to->kind == TY_DOUBLE) {
+    printf("  cvtsi2sd xmm0, QWORD PTR [rsp]\n");
+    printf("  movdqu QWORD PTR [rsp], xmm0\n");
+    return;
+  }
+
+  printf("  pop rax\n");
+
+  char *insn = to->is_unsigned ? "movzx" : "movsx";
   if (size_of(to) == 1)
     printf("  %s rax, al\n", insn);
   else if (size_of(to) == 2)
