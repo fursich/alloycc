@@ -19,14 +19,18 @@ static const char *argreg32[] = { "edi", "esi", "edx", "ecx", "r8d", "r9d" };
 static const char *argreg64[] = { "rdi", "rsi", "rdx", "rcx", "r8", "r9" };
 static Function  *current_fn;
 
-static char *xreg(Type *ty, int idx) {
+static char *reg(Type *ty, int idx, bool treat_integer_as64) {
   static char *reg64[] = {"rax", "rsi", "rdi"};
   static char *reg32[] = {"eax", "esi", "edi"};
+  static char *freg[]  = {"xmm0", "xmm1", "xmm2"};
+
+  if (is_flonum(ty))
+    return freg[idx];
 
   if (ty->base || size_of(ty) == 8)
     return reg64[idx];
 
-  return reg32[idx];
+  return treat_integer_as64 ? reg64[idx] : reg32[idx];
 }
 
 static void gen_addr(Node *node) {
@@ -111,18 +115,43 @@ static void store(Type *ty) {
   printf("  push rsi\n");
 }
 
+static void pop_to(char *rg, Type *ty) {
+  if (ty->kind == TY_FLOAT) {
+    // (sort of) equivalent operations to 'pop xmm_i'
+    printf("  movss %s, DWORD PTR [rsp]\n", rg);
+    printf("  add rsp, 8\n");
+  } else if (ty->kind == TY_DOUBLE) {
+    // (sort of) equivalent operations to 'pop xmm_i'
+    printf("  movsd %s, QWORD PTR [rsp]\n", rg);
+    printf("  add rsp, 8\n");
+  } else {
+    printf("  pop %s\n", rg);
+  }
+}
+
+static void push_from(char *rg, Type *ty) {
+  if (ty->kind == TY_FLOAT) {
+    // (sort of) equivalent operations to 'push xmm_i'
+    printf("  sub rsp, 8\n");
+    printf("  mov QWORD PTR [rsp], 0\n");         // clear full 64bit before pushing 32bit value
+    printf("  movss DWORD PTR [rsp], %s\n", rg);
+  } else if (ty->kind == TY_DOUBLE) {
+    // (sort of) equivalent operations to 'push xmm_i'
+    printf("  sub rsp, 8\n");
+    printf("  movsd QWORD PTR [rsp], %s\n", rg);
+  } else {
+    printf("  push %s\n", rg);
+  }
+}
+
 static void cmp_zero(Type *ty) {
   if (ty->kind == TY_FLOAT) {
-    // (sort of) equivalent operations to 'pop xmm1'
-    printf("  movss xmm1, DWORD PTR [rsp]\n");
-    printf("  add rsp, 8\n");
+    pop_to("xmm1", ty);
     // compare against zero as float
     printf("  xorps xmm0, xmm0\n");
     printf("  ucomiss xmm0, xmm1\n");
   } else if (ty->kind == TY_DOUBLE) {
-    // (sort of) equivalent operations to 'pop xmm1'
-    printf("  movsd xmm1, QWORD PTR [rsp]\n");
-    printf("  add rsp, 8\n");
+    pop_to("xmm1", ty);
     // compare against zero as double
     printf("  xorpd xmm0, xmm0\n");
     printf("  ucomisd xmm0, xmm1\n");
@@ -177,13 +206,13 @@ static void cast(Type *from, Type *to) {
   if (to->kind == TY_FLOAT) {
     printf("  cvtsi2ss xmm0, QWORD PTR [rsp]\n");
     printf("  mov QWORD PTR [rsp], 0\n");         // clear full 64bit before pushing 32bit value
-    printf("  movdqu DWORD PTR [rsp], xmm0\n");
+    printf("  movss DWORD PTR [rsp], xmm0\n");
     return;
   }
 
   if (to->kind == TY_DOUBLE) {
     printf("  cvtsi2sd xmm0, QWORD PTR [rsp]\n");
-    printf("  movdqu QWORD PTR [rsp], xmm0\n");
+    printf("  movsd QWORD PTR [rsp], xmm0\n");
     return;
   }
 
@@ -337,7 +366,7 @@ static void gen_expr(Node *node) {
   }
   case ND_NOT:
     gen_expr(node->lhs);
-    char *rs = xreg(node->lhs->ty, 0);
+    char *rs = reg(node->lhs->ty, 0, false);
 
     printf("  pop rax\n");
     printf("  cmp %s, 0\n", rs);
@@ -447,82 +476,126 @@ static void gen_expr(Node *node) {
     return;
   }
 
+  char *rs64 = reg(node->lhs->ty, 1, true);
+  char *rd64 = reg(node->lhs->ty, 2, true);
+  char *rs = reg(node->lhs->ty, 1, false);
+  char *rd = reg(node->lhs->ty, 2, false);
+
   gen_expr(node->lhs);
   gen_expr(node->rhs);
 
-  char *rs = xreg(node->lhs->ty, 1);
-  char *rd = xreg(node->lhs->ty, 2);
-
-  printf("  pop rsi\n");  // rhs
-  printf("  pop rdi\n");  // lhs
+  pop_to(rs64, node->lhs->ty); // rhs
+  pop_to(rd64, node->lhs->ty); // lhs
 
   switch (node->kind) {
   case ND_ADD:
     printf("  add %s, %s\n", rd, rs);
-    break;
+    printf("  push %s\n", rd64);
+    return;
   case ND_SUB:
     printf("  sub %s, %s\n", rd, rs);
-    break;
+    printf("  push %s\n", rd64);
+    return;
   case ND_MUL:
     printf("  imul %s, %s\n", rd, rs); // can use imul regardless operands' signs
-    break;
+    printf("  push %s\n", rd64);
+    return;
   case ND_DIV:
     divmod(node, rs, rd, "rax", "eax");
-    break;
+    printf("  push %s\n", rd64);
+    return;
   case ND_MOD:
     divmod(node, rs, rd, "rdx", "edx");
-    break;
+    printf("  push %s\n", rd64);
+    return;
   case ND_BITAND:
     printf("  and %s, %s\n", rd, rs);
-    break;
+    printf("  push %s\n", rd64);
+    return;
   case ND_BITOR:
     printf("  or %s, %s\n", rd, rs);
-    break;
+    printf("  push %s\n", rd64);
+    return;
   case ND_BITXOR:
     printf("  xor %s, %s\n", rd, rs);
-    break;
+    printf("  push %s\n", rd64);
+    return;
   case ND_EQ:
-    printf("  cmp %s, %s\n", rd, rs);
+    if (node->lhs->ty->kind == TY_FLOAT)
+      printf("  ucomiss %s, %s\n", rd, rs);
+    else if (node->lhs->ty->kind == TY_DOUBLE)
+      printf("  ucomisd %s, %s\n", rd, rs);
+    else
+      printf("  cmp %s, %s\n", rd, rs);
+
     printf("  sete al\n");
-    printf("  movzx %s, al\n", rd);
-    break;
+    printf("  movzx rax, al\n");
+    printf("  push rax\n");
+    return;
   case ND_NE:
-    printf("  cmp %s, %s\n", rd, rs);
+    if (node->lhs->ty->kind == TY_FLOAT)
+      printf("  ucomiss %s, %s\n", rd, rs);
+    else if (node->lhs->ty->kind == TY_DOUBLE)
+      printf("  ucomisd %s, %s\n", rd, rs);
+    else
+      printf("  cmp %s, %s\n", rd, rs);
+
     printf("  setne al\n");
-    printf("  movzx %s, al\n", rd);
-    break;
+    printf("  movzx rax, al\n");
+    printf("  push rax\n");
+    return;
   case ND_LT:
-    printf("  cmp %s, %s\n", rd, rs);
-    if (node->lhs->ty->is_unsigned)
+    if (node->lhs->ty->kind == TY_FLOAT) {
+      printf("  ucomiss %s, %s\n", rd, rs);
       printf("  setb al\n");
-    else
-      printf("  setl al\n");
-    printf("  movzx %s, al\n", rd);
-    break;
+    } else if (node->lhs->ty->kind == TY_DOUBLE) {
+      printf("  ucomisd %s, %s\n", rd, rs);
+      printf("  setb al\n");
+    } else {
+      printf("  cmp %s, %s\n", rd, rs);
+      if (node->lhs->ty->is_unsigned)
+        printf("  setb al\n");
+      else
+        printf("  setl al\n");
+    }
+
+    printf("  movzx rax, al\n");
+    printf("  push rax\n");
+    return;
   case ND_LE:
-    printf("  cmp %s, %s\n", rd, rs);
-    if (node->lhs->ty->is_unsigned)
-     printf("  setbe al\n");
-    else
-     printf("  setle al\n");
-    printf("  movzx %s, al\n", rd);
-    break;
+    if (node->lhs->ty->kind == TY_FLOAT) {
+      printf("  ucomiss %s, %s\n", rd, rs);
+      printf("  setbe al\n");
+    } else if (node->lhs->ty->kind == TY_DOUBLE) {
+      printf("  ucomisd %s, %s\n", rd, rs);
+      printf("  setbe al\n");
+    } else {
+      printf("  cmp %s, %s\n", rd, rs);
+      if (node->lhs->ty->is_unsigned)
+       printf("  setbe al\n");
+      else
+       printf("  setle al\n");
+    }
+
+    printf("  movzx rax, al\n");
+    printf("  push rax\n");
+    return;
   case ND_SHL:
     printf("  mov rcx, rsi\n");   // make sure that rcx contains all possible source bits from rs (rsi / esi)
     printf("  shl %s, cl\n", rd);
-    break;
+    printf("  push %s\n", rd64);
+    return;
   case ND_SHR:
     printf("  mov rcx, rsi\n");   // make sure that rcx contains all possible source bits from rs (rsi / esi)
     if (node->lhs->ty->is_unsigned)
       printf("  shr %s, cl\n", rd);
     else
       printf("  sar %s, cl\n", rd);
-    break;
+    printf("  push %s\n", rd64);
+    return;
   default:
     error_tok(node->token, "invalid expression");
   }
-
-  printf("  push rdi\n");
 }
 
 static void gen_stmt(Node *node) {
