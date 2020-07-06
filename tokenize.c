@@ -168,6 +168,8 @@ static bool is_keyword(Token *tok) {
     "short",
     "int",
     "long",
+    "float",
+    "double",
 
     "struct",
     "union",

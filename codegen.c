@@ -9,6 +9,8 @@ static void gen_stmt(Node *node);
 static void gen_addr(Node *node);
 static void load(Type *ty);
 static void store(Type *ty);
+static void pop_to(char *rg, Type *ty);
+static void push_from(char *rg, Type *ty);
 
 static int labelseq = 1;
 static int brkseq;
@@ -75,6 +77,19 @@ static void load(Type *ty) {
 
   printf("  pop rax\n");
 
+  // in-memory flonum can be treated as a mere 32/64bit "integer",
+  // when loading its value to the stack
+  if (ty->kind == TY_FLOAT) {
+    printf("  mov eax, dword ptr [rax]\n");
+    printf("  mov eax, eax\n"); // make sure upper 32-bit is cleared out
+    printf("  push rax\n");
+    return;
+  } else if (ty->kind == TY_DOUBLE) {
+    printf("  mov rax, [rax]\n");
+    printf("  push rax\n");
+    return;
+  }
+
   int sz = size_of(ty);
   char *insn = ty->is_unsigned ? "movzx" : "movsx";
 
@@ -94,20 +109,31 @@ static void load(Type *ty) {
 static void store(Type *ty) {
   int sz = size_of(ty);
 
-  printf("  pop rsi\n");
-  printf("  pop rdi\n");
+  char *rs64 = reg(ty, 1, true);
+  printf("  pop rsi\n"); // rhs
+  printf("  pop rdi\n"); // lhs (lvalue)
 
   if (ty->kind == TY_STRUCT) {
     for (int i = 0; i < sz; i++) {
       printf("  mov al, [rsi+%d]\n", i);
       printf("  mov [rdi+%d], al\n", i);
     }
+  } else if (ty->kind == TY_FLOAT) {
+    // NOTE:
+    // in-memory flonum can be treated as a mere 32/64bit "integer",
+    // when loading its value to the stack
+    printf("  mov dword ptr [rdi], esi\n");
+  } else if (ty->kind == TY_DOUBLE) {
+    // NOTE:
+    // in-memory flonum can be treated as a mere 32/64bit "integer",
+    // when loading its value to the stack
+    printf("  mov [rdi], rsi\n");
   } else if (sz == 1) {
-    printf("  mov [rdi], sil\n");
+    printf("  mov byte ptr [rdi], sil\n");
   } else if (sz == 2) {
-    printf("  mov [rdi], si\n");
+    printf("  mov word ptr [rdi], si\n");
   } else if (sz == 4) {
-    printf("  mov [rdi], esi\n");
+    printf("  mov dword ptr [rdi], esi\n");
   } else {
     printf("  mov [rdi], rsi\n");
   }
