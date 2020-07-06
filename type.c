@@ -13,6 +13,9 @@ Type *ty_ushort = &(Type) {TY_SHORT, 2, 2, true};
 Type *ty_uint   = &(Type) {TY_INT,   4, 4, true};
 Type *ty_ulong  = &(Type) {TY_LONG,  8, 8, true};
 
+Type *ty_float  = &(Type) {TY_FLOAT,  4, 4};
+Type *ty_double = &(Type) {TY_DOUBLE, 8, 8};
+
 Type *new_type(TypeKind kind, int size, int align) {
   Type *ty = calloc(1, sizeof(Type));
   ty->kind = kind;
@@ -76,13 +79,17 @@ bool is_integer(Type *ty) {
          kd == TY_SHORT || kd == TY_INT  || kd == TY_LONG;
 }
 
+bool is_flonum(Type *ty) {
+  return ty->kind == TY_FLOAT || ty->kind == TY_DOUBLE;
+}
+
 // types having its base type that 'behaves like' a pointer
 bool is_pointer_like(Type *ty) {
   return ty->base;
 }
 
 static bool is_scalar(Type *ty) {
-  return is_integer(ty) || is_pointer_like(ty);
+  return is_integer(ty) || is_flonum(ty) || is_pointer_like(ty);
 }
 
 static Type *get_common_type(Type *ty1, Type *ty2) {

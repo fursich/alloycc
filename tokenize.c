@@ -111,14 +111,6 @@ char *expect_string(Token **rest, Token *tok) {
   return s;
 }
 
-long expect_number(Token **rest, Token *tok) {
-  if (tok->kind != TK_NUM)
-    error_at(tok->str, "expected a number");
-  long val = tok->val;
-  *rest = tok->next;
-  return val;
-}
-
 static Token *new_token(TokenKind kind, Token *cur, char *str, int len) {
   Token *tok = calloc(1, sizeof(Token));
   tok->kind = kind;
@@ -419,11 +411,36 @@ static Token *read_int_literal(Token *cur, char *start) {
       ty = ty_int;
   }
 
-  if (is_alnum(*p))
-    error_at(p, "invalid digit");
-
   Token *tok = new_token(TK_NUM, cur, start, p - start);
   tok->val = val;
+  tok->ty = ty;
+  return tok;
+}
+
+static Token *read_number(Token *cur, char *start) {
+  // try parsing the current literal as integer constant
+  Token *tok = read_int_literal(cur, start);
+  if (!strchr(".eEfF", start[tok->len]))
+    return tok;
+
+  // must be a floating point const, if not an integer
+  char *end;
+  double fval = strtod(start, &end);
+
+  Type *ty;
+  if (*end == 'f' || *end == 'F') {
+    ty = ty_float;
+    end++;
+  } else if (*end == 'l' || *end == 'L') {
+    ty = ty_double;
+    end++;
+  } else {
+    ty = ty_double;
+  }
+
+  // discard the integer token, and rebuild one as floating point
+  tok = new_token(TK_NUM, cur, start, end - start);
+  tok->fval = fval;
   tok->ty = ty;
   return tok;
 }
@@ -477,9 +494,9 @@ static Token *tokenize() {
       continue;
     }
 
-    /* Integer Literal */
-    if (isdigit(*p)) {
-      cur = read_int_literal(cur, p);
+    /* Numeric Literal */
+    if (isdigit(*p) || (p[0] == '.' && isdigit(p[1]))) {
+      cur = read_number(cur, p);
       p += cur->len;
       continue;
     }

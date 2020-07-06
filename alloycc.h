@@ -31,6 +31,7 @@ struct Token {
   TokenKind kind;
   Token *next;
   long val;
+  double fval;
   Type *ty; // Used if TK_NUM
   char *str;
   int len;
@@ -52,7 +53,6 @@ Token *skip(Token *tok, char *op);
 char *expect_ident(Token **rest, Token *tok);
 char *get_identifier(Token *tok);
 char *expect_string(Token **rest, Token *tok);
-long expect_number(Token **rest, Token *tok);
 
 Token *tokenize_file(char *path);
 extern char *current_filename;
@@ -183,6 +183,7 @@ struct Node {
 
   // numeric literal
   long val;
+  double fval;
 };
 
 typedef struct Function Function;
@@ -224,6 +225,8 @@ typedef enum {
   TY_SHORT,
   TY_INT,
   TY_LONG,
+  TY_FLOAT,
+  TY_DOUBLE,
   TY_PTR,
   TY_FUNC,
   TY_ARRAY,
@@ -278,6 +281,9 @@ extern Type *ty_ushort;
 extern Type *ty_uint;
 extern Type *ty_ulong;
 
+extern Type *ty_float;
+extern Type *ty_double;
+
 Type *new_type(TypeKind kind, int size, int align);
 int align_to(int n, int align);
 Type *pointer_to(Type *base);
@@ -288,5 +294,6 @@ Type *enum_type(void);
 Type *struct_type(void);
 int size_of(Type *ty);
 bool is_integer(Type *ty);
+bool is_flonum(Type *ty);
 bool is_pointer_like(Type *ty);
 void generate_type(Node *node);

@@ -302,6 +302,12 @@ static Node *new_node_num(long val, Token *tok) {
   return node;
 }
 
+static Node *new_node_fnum(double fval, Token *tok) {
+  Node *node = new_node(ND_NUM, tok);
+  node->fval = fval;
+  return node;
+}
+
 static Node *new_node_num_ulong(long val, Token *tok) {
   Node *node = new_node(ND_NUM, tok);
   node->val = val;
@@ -2188,10 +2194,17 @@ static Node *primary(Token **rest, Token *tok) {
     return new_node_var(var, start);
   }
 
-  Type *num_ty = tok->ty;
-  Node *node = new_node_num(expect_number(rest, tok), start);
-  node->ty = num_ty;
+  if (tok->kind != TK_NUM)
+    error_tok(start, "unexpected expression");
 
+  Node *node;
+  if (is_flonum(tok->ty))
+    node = new_node_fnum(tok->fval, start);
+  else
+    node = new_node_num(tok->val, start);
+
+  node->ty = tok->ty;
+  *rest = tok->next;
   return node;
 }
 
