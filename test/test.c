@@ -177,6 +177,25 @@ int (*fnptr(void))(int) {
 
 int main() {
 
+  assert(0, !3., "!3.");
+  assert(1, !0., "!0.");
+  assert(0, 0.0 && 0.0, "0.0 && 0.0");
+  assert(0, 0.0 && 0.1, "0.0 && 0.1");
+  assert(0, 0.3 && 0.0, "0.3 && 0.0");
+  assert(1, 0.3 && 0.5, "0.3 && 0.5");
+  assert(0, 0.0 || 0.0, "0.0 || 0.0");
+  assert(1, 0.0 || 0.1, "0.0 || 0.1");
+  assert(1, 0.3 || 0.0, "0.3 || 0.0");
+  assert(1, 0.3 || 0.5, "0.3 || 0.5");
+  assert(5, 0.0 ? 3 : 5, "0.0 ? 3 : 5");
+  assert(3, 1.2 ? 3 : 5, "1.2 ? 3 : 5");
+  assert(5, ({ int x; if (0.0) x=3; else x=5; x; }), "({ int x; if (0.0) x=3; else x=5; x; })");
+  assert(3, ({ int x; if (0.1) x=3; else x=5; x; }), "({ int x; if (0.1) x=3; else x=5; x; })");
+  assert(5, ({ int x=5; if (0.0) x=3; x; }), "({ int x=5; if (0.0) x=3; x; })");
+  assert(3, ({ int x=5; if (0.1) x=3; x; }), "({ int x=5; if (0.1) x=3; x; })");
+  assert(10, ({ double i=10.0; int j=0; for (; i; i--, j++); j; }), "({ double i=10.0; int j=0; for (; i; i--, j++); j; })");
+  assert(10, ({ double i=10.0; int j=0; do j++; while(--i); j; }), "({ double i=10.0; int j=0; do j++; while(--i); j; })");
+
   assert(4, sizeof(1f+2), "sizeof(1f+2)");
   assert(8, sizeof(1.0+2), "sizeof(1.0+2)");
   assert(8, sizeof(3+1L), "sizeof(1L+2)");

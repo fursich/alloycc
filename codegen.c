@@ -380,8 +380,7 @@ static void gen_expr(Node *node) {
     int seq = labelseq++;
 
     gen_expr(node->cond);
-    printf("  pop rax\n");
-    printf("  cmp rax, 0\n");
+    cmp_zero(node->cond->ty);
     printf("  je .L.else.%d\n", seq);
     gen_expr(node->then);
     printf("  jmp .L.end.%d\n", seq);
@@ -394,8 +393,7 @@ static void gen_expr(Node *node) {
     gen_expr(node->lhs);
     char *rs = reg(node->lhs->ty, 0, false);
 
-    printf("  pop rax\n");
-    printf("  cmp %s, 0\n", rs);
+    cmp_zero(node->lhs->ty);
     printf("  sete al\n");
     printf("  movzx rax, al\n");
     printf("  push rax\n");
@@ -410,12 +408,10 @@ static void gen_expr(Node *node) {
     int seq = labelseq++;
 
     gen_expr(node->lhs);
-    printf("  pop rax\n");
-    printf("  cmp rax, 0\n");
+    cmp_zero(node->lhs->ty);
     printf("  je .L.false.%d\n", seq);
     gen_expr(node->rhs);
-    printf("  pop rax\n");
-    printf("  cmp rax, 0\n");
+    cmp_zero(node->rhs->ty);
     printf("  je .L.false.%d\n", seq);
     printf("  push 1\n");
     printf("  jmp .L.end.%d\n", seq);
@@ -428,12 +424,10 @@ static void gen_expr(Node *node) {
     int seq = labelseq++;
 
     gen_expr(node->lhs);
-    printf("  pop rax\n");
-    printf("  cmp rax, 0\n");
+    cmp_zero(node->lhs->ty);
     printf("  jne .L.true.%d\n", seq);
     gen_expr(node->rhs);
-    printf("  pop rax\n");
-    printf("  cmp rax, 0\n");
+    cmp_zero(node->rhs->ty);
     printf("  jne .L.true.%d\n", seq);
     printf("  push 0\n");
     printf("  jmp .L.end.%d\n", seq);
@@ -657,8 +651,7 @@ static void gen_stmt(Node *node) {
 
     if (node->els) {
       gen_expr(node->cond);
-      printf("  pop rax\n");
-      printf("  cmp rax, 0\n");
+      cmp_zero(node->cond->ty);
       printf("  je .L.else.%d\n", seq);
       gen_stmt(node->then);
       printf("  jmp .L.end.%d\n", seq);
@@ -667,8 +660,7 @@ static void gen_stmt(Node *node) {
       printf(".L.end.%d:\n", seq);
     } else {
       gen_expr(node->cond);
-      printf("  pop rax\n");
-      printf("  cmp rax, 0\n");
+      cmp_zero(node->cond->ty);
       printf("  je .L.end.%d\n", seq);
       gen_stmt(node->then);
       printf(".L.end.%d:\n", seq);
@@ -686,8 +678,7 @@ static void gen_stmt(Node *node) {
     printf(".L.begin.%d:\n", seq);
     if (node->cond) {
       gen_expr(node->cond);
-      printf("  pop rax\n");
-      printf("  cmp rax, 0\n");
+      cmp_zero(node->cond->ty);
       printf("  je .L.break.%d\n", seq);
     }
     gen_stmt(node->then);
@@ -711,8 +702,7 @@ static void gen_stmt(Node *node) {
     gen_stmt(node->then);
     printf(".L.continue.%d:\n", seq);
     gen_expr(node->cond);
-    printf("  pop rax\n");
-    printf("  cmp rax, 0\n");
+    cmp_zero(node->cond->ty);
     printf("  jne .L.begin.%d\n", seq);
     printf(".L.break.%d:\n", seq);
 
