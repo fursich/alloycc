@@ -515,20 +515,44 @@ static void gen_expr(Node *node) {
 
   switch (node->kind) {
   case ND_ADD:
-    printf("  add %s, %s\n", rd, rs);
-    printf("  push %s\n", rd64);
+    if (node->ty->kind == TY_FLOAT)
+      printf("  addss %s, %s\n", rd, rs);
+    else if (node->ty->kind == TY_DOUBLE)
+      printf("  addsd %s, %s\n", rd, rs);
+    else
+      printf("  add %s, %s\n", rd, rs);
+
+    push_from(rd64, node->ty);
     return;
   case ND_SUB:
-    printf("  sub %s, %s\n", rd, rs);
-    printf("  push %s\n", rd64);
+    if (node->ty->kind == TY_FLOAT)
+      printf("  subss %s, %s\n", rd, rs);
+    else if (node->ty->kind == TY_DOUBLE)
+      printf("  subsd %s, %s\n", rd, rs);
+    else
+      printf("  sub %s, %s\n", rd, rs);
+
+    push_from(rd64, node->ty);
     return;
   case ND_MUL:
-    printf("  imul %s, %s\n", rd, rs); // can use imul regardless operands' signs
-    printf("  push %s\n", rd64);
+    if (node->ty->kind == TY_FLOAT)
+      printf("  mulss %s, %s\n", rd, rs);
+    else if (node->ty->kind == TY_DOUBLE)
+      printf("  mulsd %s, %s\n", rd, rs);
+    else
+      printf("  imul %s, %s\n", rd, rs); // can use imul regardless operands' signs
+
+    push_from(rd64, node->ty);
     return;
   case ND_DIV:
-    divmod(node, rs, rd, "rax", "eax");
-    printf("  push %s\n", rd64);
+    if (node->ty->kind == TY_FLOAT)
+      printf("  divss %s, %s\n", rd, rs);
+    else if (node->ty->kind == TY_DOUBLE)
+      printf("  divsd %s, %s\n", rd, rs);
+    else
+      divmod(node, rs, rd, "rax", "eax");
+
+    push_from(rd64, node->ty);
     return;
   case ND_MOD:
     divmod(node, rs, rd, "rdx", "edx");

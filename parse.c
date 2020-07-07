@@ -320,7 +320,7 @@ static Node *new_node_add(Node *lhs, Node *rhs, Token *tok) {
   generate_type(rhs);
 
   // number + number
-  if (is_integer(lhs->ty) && is_integer(rhs->ty))
+  if (is_numeric(lhs->ty) && is_numeric(rhs->ty))
     return new_node_binary(ND_ADD, lhs, rhs, tok);
 
   // ptr + ptr (illegal)
@@ -348,7 +348,7 @@ static Node *new_node_sub(Node *lhs, Node *rhs, Token *tok) {
   generate_type(rhs);
 
   // number - number
-  if (is_integer(lhs->ty) && is_integer(rhs->ty))
+  if (is_numeric(lhs->ty) && is_numeric(rhs->ty))
     return new_node_binary(ND_SUB, lhs, rhs, tok);
 
   // ptr - number (multiplied by base size of ptr)

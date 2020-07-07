@@ -295,5 +295,6 @@ Type *struct_type(void);
 int size_of(Type *ty);
 bool is_integer(Type *ty);
 bool is_flonum(Type *ty);
+bool is_numeric(Type *ty);
 bool is_pointer_like(Type *ty);
 void generate_type(Node *node);

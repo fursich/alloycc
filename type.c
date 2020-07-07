@@ -83,13 +83,17 @@ bool is_flonum(Type *ty) {
   return ty->kind == TY_FLOAT || ty->kind == TY_DOUBLE;
 }
 
-// types having its base type that 'behaves like' a pointer
-bool is_pointer_like(Type *ty) {
-  return ty->base;
+bool is_numeric(Type *ty) {
+  return is_integer(ty) || is_flonum(ty);
 }
 
 static bool is_scalar(Type *ty) {
-  return is_integer(ty) || is_flonum(ty) || is_pointer_like(ty);
+  return is_numeric(ty) || is_pointer_like(ty);
+}
+
+// types having its base type that 'behaves like' a pointer
+bool is_pointer_like(Type *ty) {
+  return ty->base;
 }
 
 static Type *get_common_type(Type *ty1, Type *ty2) {

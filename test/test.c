@@ -177,6 +177,32 @@ int (*fnptr(void))(int) {
 
 int main() {
 
+  assert(4, sizeof(1f+2), "sizeof(1f+2)");
+  assert(8, sizeof(1.0+2), "sizeof(1.0+2)");
+  assert(8, sizeof(3+1L), "sizeof(1L+2)");
+  assert(4, sizeof(1f-2), "sizeof(1f-2)");
+  assert(8, sizeof(1.0-2), "sizeof(1.0-2)");
+  assert(8, sizeof(3-1L), "sizeof(1L+2)");
+  assert(4, sizeof(1f*2), "sizeof(1f*2)");
+  assert(8, sizeof(1.0*2), "sizeof(1.0*2)");
+  assert(8, sizeof(3*1L), "sizeof(1L+2)");
+  assert(4, sizeof(1f/2), "sizeof(1f/2)");
+  assert(8, sizeof(1.0/2), "sizeof(1.0/2)");
+  assert(8, sizeof(3/1L), "sizeof(1L+2)");
+
+  assert(6, 2.3+3.8, "2.3+3.8");
+  assert(-1, 2.3-3.8, "2.3-3.8");
+  assert(-3, -3.8, "-3.8");
+  assert(13, 3.3*4, "3.3*4");
+  assert(2, 5.0/2, "5.0/2");
+
+  assert(6, 2.3f+3.8f, "2.3f+3.8f");
+  assert(6, 2.3f+3.8, "2.3f+3.8");
+  assert(-1, 2.3f-3.8, "2.3f-3.8");
+  assert(-3, -3.8f, "-3.8f");
+  assert(13, 3.3f*4, "3.3f*4");
+  assert(2, 5.0f/2, "5.0f/2");
+
   assert(1, ({ float x=2e3f; x==2e3; }), "({ float x=2e3f; x==2e3; })");
   assert(0, ({ float x=2e3f; x==2e5; }), "({ float x=2e3f; x==2e5; })");
   assert(0, ({ float x=5.1f; x<5; }), "({ float x=5.1f; x<5; })");
