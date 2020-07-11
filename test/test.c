@@ -7,6 +7,8 @@ int printf();
 int exit();
 int strcmp(char *p, char *q);
 int memcmp(char *, char *);
+double add_double(double x, double y);
+float add_float(float x, float y);
 
 // test function
 int assert(long expected, long actual, char *code) {
@@ -176,6 +178,9 @@ int (*fnptr(void))(int) {
 }
 
 int main() {
+
+  assert(6, add_float(2.3, 3.8), "add_float(2.3, 3.8)");
+  assert(6, add_double(2.3, 3.8), "add_double(2.3, 3.8)");
 
   assert(0, !3., "!3.");
   assert(1, !0., "!0.");

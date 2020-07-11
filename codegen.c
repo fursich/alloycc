@@ -259,23 +259,40 @@ static void cast(Type *from, Type *to) {
   printf("  push rax\n");
 }
 
+// set in-stack arguments into the registers required by ABI, before invoking a func call
+// also set number of floating point args to rax
+// (* take extra care not to destroy rax values before calling)
 static void load_args(Node *node) {
 
+  int gp = 0, fp = 0;
   for(int i = 0; i < node->nargs; i++) {
     Var *arg = node->args[i];
     int sz = size_of(arg->ty);
 
+    // for floating-point arguments
+    if (is_flonum(arg->ty)) {
+      if (arg->ty->kind == TY_FLOAT)
+        printf("  movss xmm%d, DWORD PTR [rbp-%d]\n", fp++, arg->offset);
+      else if (arg->ty->kind == TY_DOUBLE)
+        printf("  movsd xmm%d, QWORD PTR [rbp-%d]\n", fp++, arg->offset);
+      continue;
+    }
+
+    // for non floating-point arguments
     char *insn = arg->ty->is_unsigned ? "movzx" : "movsx";
 
     if (sz == 1)
-      printf("  %s %s, byte ptr [rbp-%d]\n", insn, argreg32[i], arg->offset);
+      printf("  %s %s, byte ptr [rbp-%d]\n", insn, argreg32[gp++], arg->offset);
     else if (sz == 2)
-      printf("  %s %s, word ptr [rbp-%d]\n", insn, argreg32[i], arg->offset);
+      printf("  %s %s, word ptr [rbp-%d]\n", insn, argreg32[gp++], arg->offset);
     else if (sz == 4)
-      printf("  mov %s, dword ptr [rbp-%d]\n", argreg32[i], arg->offset);
+      printf("  mov %s, dword ptr [rbp-%d]\n", argreg32[gp++], arg->offset);
     else
-      printf("  mov %s, [rbp-%d]\n", argreg64[i], arg->offset);
+      printf("  mov %s, [rbp-%d]\n", argreg64[gp++], arg->offset);
   }
+
+  // set number of floating point args
+  printf("  mov rax, %d\n", fp);
 }
 
 static void store_args(Var *params) {
@@ -443,28 +460,61 @@ static void gen_expr(Node *node) {
       return;
     }
 
-    load_args(node);
-
     // save caller-saved registers
-    printf("  push r10\n");
-    printf("  push r11\n");
+    printf("  sub rsp, 64\n");
+    printf("  mov [rsp], r10\n");
+    printf("  mov [rsp+8], r11\n");
+    printf("  movsd [rsp+16], xmm8\n");
+    printf("  movsd [rsp+24], xmm9\n");
+    printf("  movsd [rsp+32], xmm10\n");
+    printf("  movsd [rsp+40], xmm11\n");
+    printf("  movsd [rsp+48], xmm12\n");
+    printf("  movsd [rsp+56], xmm13\n");
 
     gen_expr(node->lhs);  // function address
     printf("  pop r10\n");
 
-    printf("  mov rax, 0\n");
+    // set arguments to ABI-specified registers, as well as number of floating ptr args to rax
+    // NOTE: Do NOT use rax after this operation.
+    // the compiler must preserve rax value untill the call is made.
+    load_args(node);
+
+    // ensure rsp to be aligned to 16-bit boundary
+    int seq = labelseq++;
+    printf("  mov r11, rsp\n");
+    printf("  and r11, 15\n");
+    printf("  jne .L.unaligned.%d\n", seq);
+
+    // invoke call
     printf("  call r10\n");
+    printf("  jmp .L.end.%d\n", seq);
+    printf(".L.unaligned.%d:\n", seq);
+    printf("  sub rsp, 8\n");
+    printf("  call r10\n");
+    printf("  add rsp, 8\n");
+    printf(".L.end.%d:\n", seq);
 
     // restore caller-saved registers
-    printf("  pop r11\n");
-    printf("  pop r10\n");
+    printf("  mov r10, [rsp]\n");
+    printf("  mov r11, [rsp+8]\n");
+    printf("  movsd xmm8, [rsp+16]\n");
+    printf("  movsd xmm9, [rsp+24]\n");
+    printf("  movsd xmm10, [rsp+32]\n");
+    printf("  movsd xmm11, [rsp+40]\n");
+    printf("  movsd xmm12, [rsp+48]\n");
+    printf("  movsd xmm13, [rsp+56]\n");
+    printf("  add rsp, 64\n");
 
     // According to The System V x86-64 ABI, a function that returns a boolean is
     // required to set the lower 8 bits only.
     // Hense, the upper 56 bits might contain arbitary values.
     if (node->ty->kind == TY_BOOL)
       printf("  movzx rax, al\n");
-    printf("  push rax\n");
+
+    if (is_flonum(node->ty))
+      push_from("xmm0", node->ty);
+    else
+      push_from("rax", node->ty);
     return;
   }
   case ND_STMT_EXPR: {

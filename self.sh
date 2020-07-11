@@ -43,8 +43,10 @@ int strncmp(char *p, char *q);
 int strncasecmp(char *p, char *q, unsigned long count);
 void *memcpy(char *dst, char *src, long n);
 char *strndup(char *p, long n);
+char strchr(const char *str, int c);
 char *strstr(char *haystack, char *needle);
 unsigned long int strtoul(char *str, char **endptr, int base);
+double strtod(char *str, char **endptr);
 
 int isspace(int c);
 int ispunct(int c);
