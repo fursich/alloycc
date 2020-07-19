@@ -350,20 +350,27 @@ static void divmod(Node *node, char *rs, char *rd, char *res64, char *res32) {
 }
 
 static void builtin_va_start(Node *node) {
-  int n = 0;
+  int gp = 0, fp = 0;
+
   for (Var *var = current_fn->params; var; var = var->next)
-    n++;
+    if (is_flonum(var->ty))
+      fp++;
+    else
+      gp++;
 
   // va_list given as the first argument
   printf("  mov rax, [rbp-%d]\n", node->args[0]->offset);
   // set gp_offset as n * 8
   // * gp_offset holds the offset in bytes from reg_save_area to the place
   //   where the next available general purpose argument register is saved
-  printf("  mov dword ptr [rax], %d\n", n * 8);
+  printf("  mov dword ptr [rax], %d\n", gp * 8);
+  // fp_ofset as 48 + fp * 8, where 48 is reserved space that is used to
+  // embed rdi, rsi, rdx, rcx, r8, r9 (generenal-purpos argument registers referred above)
+  printf("  mov dword ptr [rax+4], %d\n", 48 + fp * 8);
 
-  // set reg_save_area as rbp-80
+  // set reg_save_area as rbp-128
   printf("  mov [rax+16], rbp\n");
-  printf("  sub qword ptr [rax+16], 80\n");
+  printf("  sub qword ptr [rax+16], 128\n");
   // return with void value
   printf("  sub rsp, 8\n");
 }
@@ -912,12 +919,18 @@ static void emit_text(Program *prog) {
 
     // save arg registers if function is variadic
     if (fn->is_variadic) {
-      printf("  mov [rbp-80], rdi\n");
-      printf("  mov [rbp-72], rsi\n");
-      printf("  mov [rbp-64], rdx\n");
-      printf("  mov [rbp-56], rcx\n");
-      printf("  mov [rbp-48], r8\n");
-      printf("  mov [rbp-40], r9\n");
+      printf("  mov [rbp-128], rdi\n");
+      printf("  mov [rbp-120], rsi\n");
+      printf("  mov [rbp-112], rdx\n");
+      printf("  mov [rbp-104], rcx\n");
+      printf("  mov [rbp-96], r8\n");
+      printf("  mov [rbp-88], r9\n");
+      printf("  movsd [rbp-80], xmm0\n");
+      printf("  movsd [rbp-72], xmm1\n");
+      printf("  movsd [rbp-64], xmm2\n");
+      printf("  movsd [rbp-56], xmm3\n");
+      printf("  movsd [rbp-48], xmm4\n");
+      printf("  movsd [rbp-40], xmm5\n");
     }
 
     store_args(fn->params);

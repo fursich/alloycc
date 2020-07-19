@@ -187,6 +187,8 @@ float add_float3(float x, float y, float z) {
 
 int main() {
 
+  assert(0, ({ char buf[100]; fmt(buf, "%.1f", (float)3.5); strcmp(buf, "3.5"); }), "({ char buf[100]; fmt(buf, \"%.1f\", (float)3.5); strcmp(buf, \"3.5\"); })");
+
   assert(0, ({ char buf[100]; sprintf(buf, "%.1f", (float)3.5); strcmp(buf, "3.5"); }), "({ char buf[100]; sprintf(buf, \"%.1f\", (float)3.5); strcmp(buf, \"3.5\"); })");
 
   assert(8, add_float3(2.3, 3.8, 1.9), "add_float3(2.3, 3.8, 2.9)");
