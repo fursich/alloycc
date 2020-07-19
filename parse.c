@@ -2252,6 +2252,9 @@ static Node *funcall(Token **rest, Token *tok, Node *fn) {
     if (param_ty) {
       arg = new_node_cast(arg, param_ty);
       param_ty = param_ty->next;
+    } else if (arg->ty->kind == TY_FLOAT) {
+      // when the typename is unspecfied, float type argumnt must be promoted to double
+      arg = new_node_cast(arg, ty_double);
     }
 
     Var *var = arg->ty->base
