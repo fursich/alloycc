@@ -379,7 +379,15 @@ static void gen_expr(Node *node) {
   printf(".loc 1 %d\n", node->token->line_no);
 
   switch (node->kind) {
-  case ND_ASSIGN:
+  case ND_ASSIGN: {
+    // TODO: opt out these assembly code comments unless debugging mode is specified
+    char *name;
+    if (node->var && node->var->name)
+      name = node->var->name;
+    else
+      name = strndup(node->token->str, node->token->len);
+    printf("# %s (var: %s)\n", "ND_ASSIGN", name);
+
     if (node->ty->kind == TY_ARRAY)
       error_tok(node->token, "not an lvalue");
     if (node->lhs->ty->is_const && !node->is_init)
@@ -390,7 +398,9 @@ static void gen_expr(Node *node) {
 
     store(node->ty);
     return;
+  }
   case ND_NUM:
+    printf("# %s\n", "ND_NUM");
     if (node->ty->kind == TY_FLOAT) {
       float fval = node->fval;
       printf("  mov rax, %u\n", *(int *)&fval);
@@ -407,10 +417,12 @@ static void gen_expr(Node *node) {
     }
     return;
   case ND_CAST:
+    printf("# %s\n", "ND_CAST");
     gen_expr(node->lhs);
     cast(node->lhs->ty, node->ty);
     return;
   case ND_COND: {
+    printf("# %s\n", "ND_COND");
     int seq = labelseq++;
 
     gen_expr(node->cond);
@@ -424,6 +436,7 @@ static void gen_expr(Node *node) {
     return;
   }
   case ND_NOT:
+    printf("# %s\n", "ND_NOT");
     gen_expr(node->lhs);
     char *rs = reg(node->lhs->ty, 0, false);
 
@@ -433,12 +446,14 @@ static void gen_expr(Node *node) {
     printf("  push rax\n");
     return;
   case ND_BITNOT:
+    printf("# %s\n", "ND_BITNOT");
     gen_expr(node->lhs);
     printf("  pop rax\n");
     printf("  not rax\n");
     printf("  push rax\n");
     return;
   case ND_LOGAND: {
+    printf("# %s\n", "ND_LOGAND");
     int seq = labelseq++;
 
     gen_expr(node->lhs);
@@ -455,6 +470,7 @@ static void gen_expr(Node *node) {
     return;
   }
   case ND_LOGOR: {
+    printf("# %s\n", "ND_LOGOR");
     int seq = labelseq++;
 
     gen_expr(node->lhs);
@@ -471,6 +487,7 @@ static void gen_expr(Node *node) {
     return;
   }
   case ND_FUNCALL: {
+    printf("# %s\n", "ND_FUNCALL");
     if (node->lhs->kind == ND_VAR &&
         !strcmp(node->lhs->var->name, "__builtin_va_start")) {
       builtin_va_start(node);
@@ -535,30 +552,37 @@ static void gen_expr(Node *node) {
     return;
   }
   case ND_STMT_EXPR: {
+    printf("# %s\n", "ND_STMT_EXPR");
     for (Node *n = node->body; n; n = n->next)
       gen_stmt(n);
     printf("  sub rsp, 8\n");
     return;
   }
   case ND_COMMA:
+    printf("# %s\n", "ND_COMMA");
     gen_expr(node->lhs);
     printf("  add rsp, 8\n");
     gen_expr(node->rhs);
     return;
   case ND_VAR:
+    printf("# %s\n", "ND_VAR");
   case ND_MEMBER:
+    printf("# %s\n", "ND_MEMBER");
     gen_addr(node);
 
     load(node->ty);
     return;
   case ND_ADDR:
+    printf("# %s\n", "ND_ADDR");
     gen_addr(node->lhs);
     return;
   case ND_DEREF:
+    printf("# %s\n", "ND_DEREF");
     gen_expr(node->lhs);
     load(node->ty);
     return;
   case ND_NULL_EXPR:
+    printf("# %s\n", "ND_NULL_EXPR");
     printf("  sub rsp, 8\n");
     return;
   }
@@ -576,6 +600,7 @@ static void gen_expr(Node *node) {
 
   switch (node->kind) {
   case ND_ADD:
+    printf("# %s\n", "ND_ADD");
     if (node->ty->kind == TY_FLOAT)
       printf("  addss %s, %s\n", rd, rs);
     else if (node->ty->kind == TY_DOUBLE)
@@ -586,6 +611,7 @@ static void gen_expr(Node *node) {
     push_from(rd64, node->ty);
     return;
   case ND_SUB:
+    printf("# %s\n", "ND_SUB");
     if (node->ty->kind == TY_FLOAT)
       printf("  subss %s, %s\n", rd, rs);
     else if (node->ty->kind == TY_DOUBLE)
@@ -596,6 +622,7 @@ static void gen_expr(Node *node) {
     push_from(rd64, node->ty);
     return;
   case ND_MUL:
+    printf("# %s\n", "ND_MUL");
     if (node->ty->kind == TY_FLOAT)
       printf("  mulss %s, %s\n", rd, rs);
     else if (node->ty->kind == TY_DOUBLE)
@@ -606,6 +633,7 @@ static void gen_expr(Node *node) {
     push_from(rd64, node->ty);
     return;
   case ND_DIV:
+    printf("# %s\n", "ND_DIV");
     if (node->ty->kind == TY_FLOAT)
       printf("  divss %s, %s\n", rd, rs);
     else if (node->ty->kind == TY_DOUBLE)
@@ -616,22 +644,27 @@ static void gen_expr(Node *node) {
     push_from(rd64, node->ty);
     return;
   case ND_MOD:
+    printf("# %s\n", "ND_MOD");
     divmod(node, rs, rd, "rdx", "edx");
     printf("  push %s\n", rd64);
     return;
   case ND_BITAND:
+    printf("# %s\n", "ND_BITAND");
     printf("  and %s, %s\n", rd, rs);
     printf("  push %s\n", rd64);
     return;
   case ND_BITOR:
+    printf("# %s\n", "ND_BITOR");
     printf("  or %s, %s\n", rd, rs);
     printf("  push %s\n", rd64);
     return;
   case ND_BITXOR:
+    printf("# %s\n", "ND_BITXOR");
     printf("  xor %s, %s\n", rd, rs);
     printf("  push %s\n", rd64);
     return;
   case ND_EQ:
+    printf("# %s\n", "ND_EQ");
     if (node->lhs->ty->kind == TY_FLOAT)
       printf("  ucomiss %s, %s\n", rd, rs);
     else if (node->lhs->ty->kind == TY_DOUBLE)
@@ -644,6 +677,7 @@ static void gen_expr(Node *node) {
     printf("  push rax\n");
     return;
   case ND_NE:
+    printf("# %s\n", "ND_NE");
     if (node->lhs->ty->kind == TY_FLOAT)
       printf("  ucomiss %s, %s\n", rd, rs);
     else if (node->lhs->ty->kind == TY_DOUBLE)
@@ -656,6 +690,7 @@ static void gen_expr(Node *node) {
     printf("  push rax\n");
     return;
   case ND_LT:
+    printf("# %s\n", "ND_LT");
     if (node->lhs->ty->kind == TY_FLOAT) {
       printf("  ucomiss %s, %s\n", rd, rs);
       printf("  setb al\n");
@@ -674,6 +709,7 @@ static void gen_expr(Node *node) {
     printf("  push rax\n");
     return;
   case ND_LE:
+    printf("# %s\n", "ND_LE");
     if (node->lhs->ty->kind == TY_FLOAT) {
       printf("  ucomiss %s, %s\n", rd, rs);
       printf("  setbe al\n");
@@ -692,11 +728,13 @@ static void gen_expr(Node *node) {
     printf("  push rax\n");
     return;
   case ND_SHL:
+    printf("# %s\n", "ND_SHL");
     printf("  mov rcx, rsi\n");   // make sure that rcx contains all possible source bits from rs (rsi / esi)
     printf("  shl %s, cl\n", rd);
     printf("  push %s\n", rd64);
     return;
   case ND_SHR:
+    printf("# %s\n", "ND_SHR");
     printf("  mov rcx, rsi\n");   // make sure that rcx contains all possible source bits from rs (rsi / esi)
     if (node->lhs->ty->is_unsigned)
       printf("  shr %s, cl\n", rd);
@@ -714,6 +752,7 @@ static void gen_stmt(Node *node) {
 
   switch (node->kind) {
   case ND_IF: {
+    printf("# %s\n", "ND_IF");
     int seq = labelseq++;
 
     if (node->els) {
@@ -735,6 +774,7 @@ static void gen_stmt(Node *node) {
     return;
   }
   case ND_FOR: {
+    printf("# %s\n", "ND_FOR");
     int seq = labelseq++;
     int prevbrk = brkseq;
     int prevcont = contseq;
@@ -760,6 +800,7 @@ static void gen_stmt(Node *node) {
     return;
   }
   case ND_DO: {
+    printf("# %s\n", "ND_DO");
     int seq = labelseq++;
     int brk = brkseq;
     int cont = contseq;
@@ -778,6 +819,7 @@ static void gen_stmt(Node *node) {
     return;
   }
   case ND_SWITCH: {
+    printf("# %s\n", "ND_SWITCH");
     int seq = labelseq++;
     int prevbrk = brkseq;
     brkseq = seq;
@@ -808,27 +850,33 @@ static void gen_stmt(Node *node) {
     return;
   }
   case ND_CASE:
+    printf("# %s\n", "ND_CASE");
     printf(".L.case.%d:\n", node->case_label);
     gen_stmt(node->lhs);
     return;
   case ND_BREAK:
+    printf("# %s\n", "ND_BREAK");
     if (brkseq == 0)
       error_tok(node->token, "stray break");
     printf("  jmp .L.break.%d\n", brkseq);
     return;
   case ND_CONTINUE:
+    printf("# %s\n", "ND_CONTINUE");
     if (contseq == 0)
       error_tok(node->token, "stray continue");
     printf("  jmp .L.continue.%d\n", contseq);
     return;
   case ND_GOTO:
+    printf("# %s\n", "ND_GOTO");
     printf("  jmp .L.label.%s.%s\n", current_fn->name, node->label_name);
     return;
   case ND_LABEL:
+    printf("# %s\n", "ND_LABEL");
     printf(".L.label.%s.%s:\n", current_fn->name, node->label_name);
     gen_stmt(node->lhs);
     return;
   case ND_RETURN:
+    printf("# %s\n", "ND_RETURN");
     if (node->lhs) {
       gen_expr(node->lhs);
       if (is_flonum(node->lhs->ty))
@@ -839,6 +887,7 @@ static void gen_stmt(Node *node) {
     printf("  jmp .L.return.%s\n", current_fn->name);
     return;
   case ND_BLOCK: {
+    printf("# %s\n", "ND_BLOCK");
     Node *stmt = node->body;
     while(stmt) {
       gen_stmt(stmt);
@@ -847,6 +896,7 @@ static void gen_stmt(Node *node) {
     return;
   }
   case ND_EXPR_STMT:
+    printf("# %s\n", "ND_EXPR_STMT");
     gen_expr(node->lhs);
     printf("  add rsp, 8\n");
     return;

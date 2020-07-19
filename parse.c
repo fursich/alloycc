@@ -2293,6 +2293,7 @@ static Node *funcall(Token **rest, Token *tok, Node *fn) {
     if (nargs)
       tok =  skip(tok, ",");
 
+    Token *var_tok = tok;
     Node *arg = assign(&tok, tok);
     generate_type(arg);
 
@@ -2312,7 +2313,7 @@ static Node *funcall(Token **rest, Token *tok, Node *fn) {
     args[nargs] = var;
     nargs++;
 
-    Node *expr = new_node_binary(ND_ASSIGN, new_node_var(var, tok), arg, tok);
+    Node *expr = new_node_binary(ND_ASSIGN, new_node_var(var, tok), arg, var_tok);
     node = new_node_binary(ND_COMMA, node, expr, tok);
   }
   *rest = skip(tok, ")");
