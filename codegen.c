@@ -296,22 +296,32 @@ static void load_args(Node *node) {
 }
 
 static void store_args(Var *params) {
-  int i = 0;
+  int gp = 0, fp = 0;
 
   for (Var *arg = params; arg; arg = arg->next)
-    i++;
+    if (is_flonum(arg->ty))
+      fp++;
+    else
+      gp++;
 
   for (Var *arg = params; arg; arg = arg->next) {
-    int sz = size_of(arg->ty);
-
-    if (sz == 1)
-      printf("  mov [rbp-%d], %s\n", arg->offset, argreg8[--i]);
-    else if (sz == 2)
-      printf("  mov [rbp-%d], %s\n", arg->offset, argreg16[--i]);
-    else if (sz == 4)
-      printf("  mov [rbp-%d], %s\n", arg->offset, argreg32[--i]);
-    else
-      printf("  mov [rbp-%d], %s\n", arg->offset, argreg64[--i]);
+    if (is_flonum(arg->ty)) {
+      if (arg->ty->kind == TY_FLOAT)
+        printf("  movss [rbp-%d], xmm%d\n", arg->offset, --fp);
+      else if (arg->ty->kind == TY_DOUBLE)
+        printf("  movsd [rbp-%d], xmm%d\n", arg->offset, --fp);
+    } else {
+      int sz = size_of(arg->ty);
+  
+      if (sz == 1)
+        printf("  mov [rbp-%d], %s\n", arg->offset, argreg8[--gp]);
+      else if (sz == 2)
+        printf("  mov [rbp-%d], %s\n", arg->offset, argreg16[--gp]);
+      else if (sz == 4)
+        printf("  mov [rbp-%d], %s\n", arg->offset, argreg32[--gp]);
+      else
+        printf("  mov [rbp-%d], %s\n", arg->offset, argreg64[--gp]);
+    }
   }
 }
 
@@ -814,7 +824,10 @@ static void gen_stmt(Node *node) {
   case ND_RETURN:
     if (node->lhs) {
       gen_expr(node->lhs);
-      printf("  pop rax\n");
+      if (is_flonum(node->lhs->ty))
+        pop_to("xmm0", node->lhs->ty);
+      else
+        pop_to("rax", node->lhs->ty);
     }
     printf("  jmp .L.return.%s\n", current_fn->name);
     return;

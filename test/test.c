@@ -177,7 +177,17 @@ int (*fnptr(void))(int) {
   return ret3;
 }
 
+double add_double3(double x, double y, double z) {
+  return x + y + z;
+}
+
+float add_float3(float x, float y, float z) {
+  return x + y + z;
+}
+
 int main() {
+  assert(8, add_float3(2.3, 3.8, 1.9), "add_float3(2.3, 3.8, 2.9)");
+  assert(8, add_double3(2.3, 3.8, 1.9), "add_double3(2.3, 3.8, 2.9)");
 
   assert(6, add_float(2.3, 3.8), "add_float(2.3, 3.8)");
   assert(6, add_double(2.3, 3.8), "add_double(2.3, 3.8)");
