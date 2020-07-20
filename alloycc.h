@@ -53,9 +53,15 @@ Token *skip(Token *tok, char *op);
 char *expect_ident(Token **rest, Token *tok);
 char *get_identifier(Token *tok);
 char *expect_string(Token **rest, Token *tok);
+void convert_keywords(Token *tok);
 
 Token *tokenize_file(char *path);
 extern char *current_filename;
+
+//
+// preprocess.c
+//
+Token *preprocess(Token *tok);
 
 //
 // parser.c

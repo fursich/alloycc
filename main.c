@@ -21,6 +21,7 @@ int main(int argc, char **argv) {
   }
 
   Token *tok = tokenize_file(filename);
+  tok = preprocess(tok);
   Program *prog = parse(tok);
 
   for (Function *fn = prog->fns; fn; fn = fn->next) {

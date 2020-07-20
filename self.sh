@@ -76,5 +76,6 @@ alloycc type.c
 alloycc parse.c
 alloycc codegen.c
 alloycc tokenize.c
+alloycc preprocess.c
 
 (cd $BUILDDIR; gcc -static -o ../$TARGET *.o)
