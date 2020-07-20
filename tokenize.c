@@ -601,7 +601,8 @@ Token *tokenize_file(char *path) {
     return NULL;
 
   static int file_no;
-  printf(".file %d \"%s\"\n", ++file_no, path);
+  if (!opt_E)
+    printf(".file %d \"%s\"\n", ++file_no, path);
 
   return tokenize(path, file_no, p);
 }

@@ -225,6 +225,11 @@ Program *parse(Token *tok);
 void codegen(Program *prog);
 
 //
+// main.c
+//
+extern bool opt_E;
+
+//
 // type.c
 //
 typedef enum {
