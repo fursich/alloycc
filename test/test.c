@@ -2,6 +2,8 @@
  * test code for alloycc
  */
 
+#include "include1.h"
+
 // function declarations;
 int printf();
 int exit();
@@ -189,6 +191,9 @@ float add_float3(float x, float y, float z) {
 }
 
 int main() {
+
+  assert(5, include1, "include1");
+  assert(7, include2, "include2");
 
 // null directive (for preprocessor test)
 #
