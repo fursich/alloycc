@@ -192,6 +192,17 @@ float add_float3(float x, float y, float z) {
 
 int main() {
 
+#if 0
+#include "/no/such/file"
+  assert(0, 1, "1");
+#endif
+
+  assert(3, 1
+#if 1
+    + 2
+#endif
+    , "1+2");
+
   assert(5, include1, "include1");
   assert(7, include2, "include2");
 
