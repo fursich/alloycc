@@ -4,6 +4,13 @@
 // Preprocessor
 //
 
+typedef struct Macro Macro;
+struct Macro {
+  Macro *next;
+  char *name;
+  Token *body;
+};
+
 // `#if` can be nested, so we use a stack to manage nested `#if`s
 typedef struct CondIncl CondIncl;
 struct CondIncl {
@@ -13,6 +20,7 @@ struct CondIncl {
   bool included;
 };
 
+static Macro *macros;
 static CondIncl *cond_incl;
 
 static bool is_hash(Token *tok) {
@@ -81,6 +89,33 @@ static Token *copy_line(Token **rest, Token *tok) {
   return head.next;
 }
 
+static Macro *find_macro(Token *tok) {
+  if (tok->kind != TK_IDENT)
+    return NULL;
+
+  for (Macro *m = macros; m; m = m->next)
+    if (strlen(m->name) == tok->len && !strncmp(m->name, tok->str, tok->len))
+      return m;
+  return NULL;
+}
+
+static Macro *add_macro(char *name, Token *body) {
+  Macro *m = calloc(1, sizeof(Macro));
+  m->next = macros;
+  m->name = name;
+  m->body = body;
+  macros = m;
+  return m;
+}
+
+static bool expand_macro(Token **rest, Token *tok) {
+  Macro *m = find_macro(tok);
+  if (!m)
+    return false;
+  *rest = append(m->body, tok->next);
+  return true;
+}
+
 // used to skip nested `#if` and `#endif`
 static Token *skip_cond_incl2(Token *tok) {
   while (tok->kind != TK_EOF) {
@@ -139,6 +174,10 @@ static Token *preprocess2(Token *tok) {
   Token *cur = &head;
 
   while (tok->kind != TK_EOF) {
+    // expand if that token is a macro
+    if (expand_macro(&tok, tok))
+      continue;
+
     // pass through if it is not a "#"
     if (!is_hash(tok)) {
       cur = cur->next = tok;
@@ -162,6 +201,15 @@ static Token *preprocess2(Token *tok) {
 
       tok = skip_line(tok->next);
       tok = append(tok2, tok);
+      continue;
+    }
+
+    if (equal(tok, "define")) {
+      tok = tok->next;
+      if (tok->kind != TK_IDENT)
+        error_tok(tok, "macro name must be an identifier");
+      char *name = strndup(tok->str, tok->len);
+      add_macro(name, copy_line(&tok, tok->next));
       continue;
     }
 

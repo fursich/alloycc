@@ -192,7 +192,24 @@ float add_float3(float x, float y, float z) {
 
 int main() {
 
-  assert(3, 1
+  int M1 = 5;
+
+#define M1 3
+  assert(3, M1, "M1");
+#define M1 4
+  assert(4, M1, "M1");
+#define M1 3+4+
+  assert(12, M1 5, "M1 5");
+#define M1 3+4
+  assert(23, M1*5, "M1*5");
+
+#define ASSERT assert(
+#define WHILE 5
+#define until "5"
+#define END )
+  ASSERT 5, WHILE, until END;
+
+ assert(3, 1
 #if 1
 # if 0
 #  if 1
