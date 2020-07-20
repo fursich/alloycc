@@ -190,6 +190,9 @@ float add_float3(float x, float y, float z) {
 
 int main() {
 
+// null directive (for preprocessor test)
+#
+
   assert(1, g40==1.5, "g40==1.5");
   assert(1, g41==11, "g41==11");
 

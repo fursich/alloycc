@@ -37,9 +37,10 @@ struct Token {
   int len;
 
   char *contents; // string literal contents, including '\0' terminator
-  int cont_len; // string literal length
+  int cont_len;   // string literal length
 
   int line_no;
+  bool at_bol;    // true if this token is at beginning of line
 };
 
 void error(char *fmt, ...);
