@@ -376,7 +376,7 @@ static void builtin_va_start(Node *node) {
 }
 
 static void gen_expr(Node *node) {
-  printf(".loc 1 %d\n", node->token->line_no);
+  printf(".loc %d %d\n", node->token->file_no, node->token->line_no);
 
   switch (node->kind) {
   case ND_ASSIGN: {
@@ -748,7 +748,7 @@ static void gen_expr(Node *node) {
 }
 
 static void gen_stmt(Node *node) {
-  printf(".loc 1 %d\n", node->token->line_no);
+  printf(".loc %d %d\n", node->token->file_no, node->token->line_no);
 
   switch (node->kind) {
   case ND_IF: {
@@ -1003,9 +1003,6 @@ static void emit_text(Program *prog) {
 }
 
 void codegen(Program *prog) {
-  // emit a .file directive for the assembler
-  printf(".file 1 \"%s\"\n", current_filename);
-
   printf(".intel_syntax noprefix\n");
 
   emit_bss(prog);

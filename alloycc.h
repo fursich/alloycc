@@ -39,7 +39,10 @@ struct Token {
   char *contents; // string literal contents, including '\0' terminator
   int cont_len;   // string literal length
 
-  int line_no;
+  char *filename; // input filename
+  char *input;    // entire input string
+  int line_no;    // line number: for debugging
+  int file_no;    // file number: for .loc directivbe
   bool at_bol;    // true if this token is at beginning of line
 };
 

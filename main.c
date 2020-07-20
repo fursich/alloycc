@@ -21,6 +21,9 @@ int main(int argc, char **argv) {
   }
 
   Token *tok = tokenize_file(filename);
+  if (!tok)
+    error("%s: %s", filename, strerror(errno));
+
   tok = preprocess(tok);
   Program *prog = parse(tok);
 

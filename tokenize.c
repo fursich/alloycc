@@ -15,18 +15,19 @@ void error(char *fmt, ...) {
   exit(1);
 }
 
-static void verror_at(int line_no, char *loc, char *fmt, va_list ap) {
+static void verror_at(char *filename, char *input, int line_no,
+                      char *loc, char *fmt, va_list ap) {
 
   char *line = loc;
-  while (current_input < line && line[-1] != '\n')
+  while (input < line && line[-1] != '\n')
     line--;
 
   char *end = loc;
-  while (*end != '\n')
+  while (*end && *end != '\n')
     end++;
 
   // Print out the line
-  int indent = fprintf(stderr, "%s:%d: ", current_filename, line_no);
+  int indent = fprintf(stderr, "%s:%d: ", filename, line_no);
   fprintf(stderr, "%.*s\n", (int)(end - line), line);
 
   // Show the error message
@@ -49,7 +50,7 @@ void error_at(char *loc, char *fmt, ...) {
   va_list ap;
   va_start(ap, fmt);
 
-  verror_at(line_no, loc, fmt, ap);
+  verror_at(current_filename, current_input, line_no, loc, fmt, ap);
   exit(1);
 }
 
@@ -57,7 +58,7 @@ void error_tok(Token *tok, char *fmt, ...) {
   va_list ap;
   va_start(ap, fmt);
 
-  verror_at(tok->line_no, tok->str, fmt, ap);
+  verror_at(tok->filename, tok->input, tok->line_no, tok->str, fmt, ap);
   exit(1);
 }
 
@@ -65,7 +66,7 @@ void warn_tok(Token *tok, char *fmt, ...) {
   va_list ap;
   va_start(ap, fmt);
 
-  verror_at(tok->line_no, tok->str, fmt, ap);
+  verror_at(tok->filename, tok->input, tok->line_no, tok->str, fmt, ap);
 }
 
 /* compare token name (str) without consuming it (no checks are done against its kind) */
@@ -116,6 +117,8 @@ static Token *new_token(TokenKind kind, Token *cur, char *str, int len) {
   tok->kind = kind;
   tok->str = str;
   tok->len = len;
+  tok->filename = current_filename;
+  tok->input = current_input;
   cur->next = tok;
   return tok;
 }
@@ -474,8 +477,10 @@ static void add_line_info(Token *tok) {
   } while(*p++);
 }
 
-static Token *tokenize() {
-  char *p = current_input;
+static Token *tokenize(char *filename, int file_no, char *p) {
+  current_filename = filename;
+  current_input = p;
+
   Token head;
   head.next = NULL;
   Token *cur = &head;
@@ -545,6 +550,8 @@ static Token *tokenize() {
   }
 
   new_token(TK_EOF, cur, p, 0);
+  for (Token *t = head.next; t; t = t->next)
+    t->file_no = file_no;
   add_line_info(head.next);
 
   return head.next;
@@ -559,7 +566,7 @@ static char *read_file(char *path) {
   } else {
     fp = fopen(path, "r");
     if (!fp)
-      error("cannot open %s: %s", path, strerror(errno));
+      return NULL;
   }
 
   int buflen = 4096;
@@ -589,7 +596,12 @@ static char *read_file(char *path) {
 }
 
 Token *tokenize_file(char *path) {
-  current_input = read_file(path);
-  current_filename = path;
-  return tokenize();
+  char *p = read_file(path);
+  if (!p)
+    return NULL;
+
+  static int file_no;
+  printf(".file %d \"%s\"\n", ++file_no, path);
+
+  return tokenize(path, file_no, p);
 }

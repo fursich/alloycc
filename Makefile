@@ -26,7 +26,7 @@ STG3OBJS    = $(addprefix $(STG3DIR)/, $(OBJS))
 STG3TARGET  = $(STG3DIR)/$(TARGET)
 
 TSTDIR      = test
-TSTSOURCE   = $(TSTDIR)/test.c
+TSTSOURCE   = test.c
 
 all: prep release
 
@@ -48,8 +48,8 @@ $(STG1DIR)/%.o: %.c $(HEADER)
 	$(CC) -c $(CFLAGS) $(BUILDCFLAGS) -o $@ $<
 
 # for testing (w/ stg1)
-test: $(STG1TARGET) $(TSTSOURCE) $(TSTDIR)/extern.o
-	$(STG1TARGET) $(TSTSOURCE) > $(TSTDIR)/tmp.s
+test: $(STG1TARGET) $(TSTDIR)/$(TSTSOURCE) $(TSTDIR)/extern.o
+	(cd $(TSTDIR); ../$(STG1TARGET) $(TSTSOURCE)) > $(TSTDIR)/tmp.s
 	$(CC) -static -g -o $(TSTDIR)/tmp $(TSTDIR)/tmp.s $(TSTDIR)/extern.o
 	$(TSTDIR)/tmp
 
@@ -60,8 +60,8 @@ $(STG2TARGET): $(STG1TARGET) $(SRCS) $(HEADER) self.sh
 	./self.sh $(STG1TARGET) $(STG2DIR) $(STG2TARGET)
 
 # for testing (w/ stg2)
-test-stg2: $(STG2TARGET) $(TSTSOURCE) $(TSTDIR)/extern.o
-	$(STG2TARGET) $(TSTSOURCE) > $(TSTDIR)/tmp.s
+test-stg2: $(STG2TARGET) $(TSTDIR)/$(TSTSOURCE) $(TSTDIR)/extern.o
+	(cd $(TSTDIR); ../$(STG2TARGET) $(TSTSOURCE)) > $(TSTDIR)/tmp.s
 	$(CC) -static -g -o $(TSTDIR)/tmp $(TSTDIR)/tmp.s $(TSTDIR)/extern.o
 	$(TSTDIR)/tmp
 
