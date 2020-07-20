@@ -2,13 +2,25 @@
 
 int stack_size;
 
+static void usage(void) {
+  fprintf(stderr, "alloycc [ -I<path> ] <file>\n");
+  exit(1);
+}
+
 int main(int argc, char **argv) {
-  if (argc != 2) {
-    error("%s: invalid number of arguments", argv[0]);
-    return 1;
+  char *filename = NULL;
+
+  for (int i = 1; i < argc; i++) {
+    if (!strcmp(argv[i], "--help"))
+      usage();
+
+    if (argv[i][0] == '-' && argv[i][1] != '\0')
+      error("unknown argument: %s", argv[i]);
+
+    filename = argv[i];
   }
 
-  Token *tok = tokenize_file(argv[1]);
+  Token *tok = tokenize_file(filename);
   Program *prog = parse(tok);
 
   for (Function *fn = prog->fns; fn; fn = fn->next) {
