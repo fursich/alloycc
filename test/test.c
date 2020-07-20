@@ -236,12 +236,18 @@ int main() {
   assert(12, M1 5, "M1 5");
 #define M1 3+4
   assert(23, M1*5, "M1*5");
+#undef M1
+  assert(5, M1, "M1");
 
 #define ASSERT assert(
-#define WHILE 5
+#define if 5
 #define until "5"
 #define END )
-  ASSERT 5, WHILE, until END;
+  ASSERT 5, if, until END;
+#undef ASSERT
+#undef if
+#undef until
+#undef END
 
  assert(3, 1
 #if 1
