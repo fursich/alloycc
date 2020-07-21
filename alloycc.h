@@ -11,6 +11,7 @@
 #include <assert.h>
 
 typedef struct Type Type;
+typedef struct Hideset Hideset;
 typedef struct Member Member;
 typedef struct Relocation Relocation;
 
@@ -28,22 +29,23 @@ typedef enum {
 
 typedef struct Token Token;
 struct Token {
-  TokenKind kind;
-  Token *next;
-  long val;
-  double fval;
-  Type *ty; // Used if TK_NUM
-  char *str;
-  int len;
+  TokenKind kind;  // token kind
+  Token *next;     // next token
+  long val;        // its integer value (used for TK_NUM)
+  double fval;     // its floating point value (used for TK_NUM)
+  Type *ty;        // used if TK_NUM
+  char *str;       // start of token in original input
+  int len;         // token length (in original input)
 
-  char *contents; // string literal contents, including '\0' terminator
-  int cont_len;   // string literal length
+  char *contents;  // string literal contents, including '\0' terminator
+  int cont_len;    // string literal length
 
-  char *filename; // input filename
-  char *input;    // entire input string
-  int line_no;    // line number: for debugging
-  int file_no;    // file number: for .loc directivbe
-  bool at_bol;    // true if this token is at beginning of line
+  char *filename;  // input filename
+  char *input;     // entire input string
+  int line_no;     // line number: for debugging
+  int file_no;     // file number: for .loc directivbe
+  bool at_bol;     // true if this token is at beginning of line
+  Hideset *hideset; // for macro expansion
 };
 
 void error(char *fmt, ...);
