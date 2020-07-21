@@ -24,6 +24,8 @@ struct CondIncl {
 static Macro *macros;
 static CondIncl *cond_incl;
 
+static Token *preprocess2(Token *tok);
+
 static bool is_hash(Token *tok) {
   return tok->at_bol && equal(tok, "#");
 }
@@ -161,6 +163,7 @@ static CondIncl *push_cond_incl(Token *tok, bool included) {
 // read and evaluate a constant expression
 static long eval_const_expr(Token **rest, Token *tok) {
   Token *expr = copy_line(rest, tok);
+  expr = preprocess2(expr);
   Token *rest2;
   long val = const_expr(&rest2, expr);
 
