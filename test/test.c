@@ -192,6 +192,50 @@ float add_float3(float x, float y, float z) {
 
 int main() {
 
+  assert(3,
+#ifdef M6
+         5,
+#else
+         3,
+#endif
+         "3");
+
+#define M6
+  assert(5,
+#ifdef M6
+         5,
+#else
+         3,
+#endif
+         "5");
+
+  assert(3,
+#ifndef M7
+         3,
+#else
+         5,
+#endif
+         "3");
+
+#define M7
+  assert(5,
+#ifndef M7
+         3,
+#else
+         5,
+#endif
+         "5");
+#undef M6
+#undef M7
+
+#if 0
+#ifdef NO_SUCH_MACRO
+#endif
+#ifndef NO_SUCH_MACRO
+#endif
+#else
+#endif
+
   int M2 = 6;
 #define M2 M2 + 3
   assert(9, M2, "M2");
