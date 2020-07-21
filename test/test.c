@@ -192,6 +192,40 @@ float add_float3(float x, float y, float z) {
 
 int main() {
 
+  assert(3,
+#if 0
+    1,
+#elif 0
+    2,
+#elif 3+5
+    3,
+#elif 1*5
+    4,
+#endif
+    "3");
+
+  assert(1,
+#if 1+5
+    1,
+#elif 1
+    2,
+#elif 3
+    2,
+#endif
+    "1");
+
+  assert(4,
+#if 0
+    1,
+#elif 0
+    2,
+#elif 0
+    3,
+#else
+    4,
+#endif
+    "4");
+
   int M1 = 5;
 
 #define M1 3
