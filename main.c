@@ -34,7 +34,9 @@ static void print_tokens(Token *tok) {
   for (; tok->kind != TK_EOF; tok = tok->next) {
     if (line > 1 && tok->at_bol)
       printf("\n");
-    printf(" %.*s", tok->len, tok->str);
+    if (tok->has_space && !tok->at_bol)
+      printf(" ");
+    printf("%.*s", tok->len, tok->str);
     line++;
   }
 

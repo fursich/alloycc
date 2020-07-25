@@ -45,6 +45,7 @@ struct Token {
   int line_no;     // line number: for debugging
   int file_no;     // file number: for .loc directivbe
   bool at_bol;     // true if this token is at beginning of line
+  bool has_space;  // true if this token follows a space character
   Hideset *hideset; // for macro expansion
 };
 
