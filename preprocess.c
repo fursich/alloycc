@@ -3,12 +3,25 @@
 //
 // Preprocessor
 //
+typedef struct MacroParam MacroParam;
+struct MacroParam {
+  MacroParam *next;
+  char *name;
+};
+
+typedef struct MacroArg MacroArg;
+struct MacroArg {
+  MacroArg *next;
+  char *name;
+  Token *tok;
+};
 
 typedef struct Macro Macro;
 struct Macro {
   Macro *next;
   char *name;
   bool is_objlike; // shows wheather it is objlike-like or function-like
+  MacroParam *params;
   Token *body;
   bool deleted;
 };
@@ -155,6 +168,26 @@ static Macro *add_macro(char *name, bool is_objlike, Token *body) {
   return m;
 }
 
+static MacroParam *read_macro_params(Token **rest, Token *tok) {
+  MacroParam head = {};
+  MacroParam *cur  = &head;
+
+  while(!equal(tok, ")")){
+    if (cur != &head)
+      tok = skip(tok, ",");
+
+    if (tok->kind != TK_IDENT)
+      error_tok(tok, "expected an identifier");
+    MacroParam *m = calloc(1, sizeof(MacroParam));
+    m->name = strndup(tok->str, tok->len);
+    cur = cur->next = m;
+    tok = tok->next;
+  }
+
+  *rest = tok->next;
+  return head.next;
+}
+
 static void read_macro_definition(Token **rest, Token *tok) {
   if (tok->kind != TK_IDENT)
     error_tok(tok, "macro name must be an identifier");
@@ -163,12 +196,84 @@ static void read_macro_definition(Token **rest, Token *tok) {
 
   if (!tok->has_space && equal(tok, "(")) {
     // function-like macro
-    tok = skip(tok->next, ")");
-    add_macro(name, false, copy_line(rest,tok));
+    MacroParam *params = read_macro_params(&tok, tok->next);
+    Macro *m = add_macro(name, false, copy_line(rest,tok));
+    m->params = params;
   } else {
     // object-like macro
     add_macro(name, true, copy_line(rest,tok));
   }
+}
+
+static MacroArg *read_macro_arg_one(Token **rest, Token *tok) {
+  Token head = {};
+  Token *cur  = &head;
+
+  while(!equal(tok, ",") && !equal(tok, ")")){
+    if (tok->kind == TK_EOF)
+      error_tok(tok, "premature end of input");
+    cur = cur->next = copy_token(tok);
+    tok = tok->next;
+  }
+  MacroArg *arg = calloc(1, sizeof(MacroArg));
+  arg->tok = head.next;
+  *rest = tok;
+  return arg;
+}
+
+static MacroArg *read_macro_args(Token **rest, Token *tok, MacroParam *params) {
+  Token *start = tok;
+  tok = tok->next->next;
+
+  MacroArg head = {};
+  MacroArg *cur  = &head;
+
+  MacroParam *pp = params;
+  for (; pp; pp = pp->next) {
+    if (cur != &head) {
+      if (!equal(tok, ","))
+        error_tok(tok, "too few arguments ('%s' must be provided)", pp->name);
+      tok = tok->next;
+    }
+    cur = cur->next = read_macro_arg_one(&tok, tok);
+    cur->name = pp->name;
+  }
+
+  if (equal(tok, ","))
+    error_tok(tok, "too many arguments");
+  *rest = skip(tok, ")");
+  return head.next;
+}
+
+static Token *find_arg(MacroArg *args, Token *tok) {
+  for (MacroArg *ap = args; ap; ap = ap->next) {
+    if (tok->len == strlen(ap->name) && !strncmp(tok->str, ap->name, tok->len))
+      return ap->tok;
+  }
+  return NULL;
+}
+
+// replace func-like macro parameters with given arguments
+static Token *subst(Token *tok, MacroArg *args) {
+  Token head = {};
+  Token *cur  = &head;
+
+  while (tok->kind != TK_EOF)  {
+    Token *arg = find_arg(args, tok);
+
+    if (!arg) {
+      cur =  cur->next = copy_token(tok);
+      tok = tok->next;
+      continue;
+    }
+
+    for (Token *t = arg; t; t = t->next)
+      cur =  cur->next = copy_token(t);
+
+    tok = tok->next;
+  }
+
+  return head.next;
 }
 
 static bool expand_macro(Token **rest, Token *tok) {
@@ -190,12 +295,12 @@ static bool expand_macro(Token **rest, Token *tok) {
     return true;
   }
 
-  // function-like macro token
+  // function-like macro application
   if (!equal(tok->next, "("))
     return false;
 
-  tok = skip(tok->next->next, ")");
-  *rest = append(m->body, tok);
+  MacroArg *args  = read_macro_args(&tok, tok, m->params);
+  *rest = append(subst(m->body, args), tok);
   return true;
 }
 
