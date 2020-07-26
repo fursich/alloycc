@@ -192,6 +192,10 @@ float add_float3(float x, float y, float z) {
 
 int main() {
 
+#define M8(x,y) x*y
+  assert(20, M8((2+3), 4), "M8((2+3), 4)");
+#define M8(x,y) x*y
+  assert(12, M8((2,3), 4), "M8((2,3), 4)");
 #define M8(x,y) x y
   assert(9, M8(, 4+5), "M8(, 4+5)");
 #define M8(x,y) x+y
