@@ -78,7 +78,7 @@ bool consume(Token **rest, Token *tok, char *op) {
 /* assert token name (str) equals to *op (no checks against its kind) */
 Token *skip(Token *tok, char *op) {
   if (!equal(tok, op))
-    error_at(tok->str, "expected '%s'", op);
+    error_tok(tok, "expected '%s'", op);
   return tok->next;
 }
 
@@ -90,14 +90,14 @@ char *expect_ident(Token **rest, Token *tok) {
 
 char *get_identifier(Token *tok) {
   if (tok->kind != TK_IDENT)
-    error_at(tok->str, "expected an identifier");
+    error_tok(tok, "expected an identifier");
   char *name = strndup(tok->str, tok->len);
   return name;
 }
 
 char *expect_string(Token **rest, Token *tok) {
   if (tok->kind != TK_STR)
-    error_at(tok->str, "expected a string");
+    error_tok(tok, "expected a string");
   char *s = tok->str;
   *rest = tok->next;
   return s;
