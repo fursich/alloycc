@@ -245,10 +245,13 @@ static MacroArg *read_macro_args(Token **rest, Token *tok, MacroParam *params) {
   return head.next;
 }
 
+// macro arguments can be empty
+static Token *EMPTY = (Token *)-1;
+
 static Token *find_arg(MacroArg *args, Token *tok) {
   for (MacroArg *ap = args; ap; ap = ap->next) {
     if (tok->len == strlen(ap->name) && !strncmp(tok->str, ap->name, tok->len))
-      return ap->tok;
+      return ap->tok ? ap->tok : EMPTY;
   }
   return NULL;
 }
@@ -267,10 +270,13 @@ static Token *subst(Token *tok, MacroArg *args) {
       continue;
     }
 
+    tok = tok->next;
+
+    if (arg == EMPTY)
+      continue;
+
     for (Token *t = arg; t; t = t->next)
       cur =  cur->next = copy_token(t);
-
-    tok = tok->next;
   }
 
   return head.next;
