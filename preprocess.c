@@ -118,6 +118,13 @@ static Hideset *new_hideset(char *name) {
   return hs;
 }
 
+static bool hideset_contains(Hideset *hs, char *s, int len) {
+  for (; hs; hs = hs->next)
+    if (strlen(hs->name) == len && !strncmp(hs->name, s, len))
+      return true;
+  return false;
+}
+
 static Hideset *hideset_union(Hideset *hs1, Hideset *hs2) {
   Hideset head = {};
   Hideset *cur = &head;
@@ -129,11 +136,15 @@ static Hideset *hideset_union(Hideset *hs1, Hideset *hs2) {
   return head.next;
 }
 
-static bool hideset_contains(Hideset *hs, char *s, int len) {
-  for (; hs; hs = hs->next)
-    if (strlen(hs->name) == len && !strncmp(hs->name, s, len))
-      return true;
-  return false;
+static Hideset *hideset_intersection(Hideset *hs1, Hideset *hs2) {
+  Hideset head = {};
+  Hideset *cur = &head;
+
+  for (; hs1; hs1 = hs1->next)
+    if (hideset_contains(hs2, hs1->name, strlen(hs1->name)))
+      cur = cur->next = new_hideset(hs1->name);
+
+  return head.next;
 }
 
 static Token *add_hideset(Token *tok, Hideset *hs) {
@@ -312,8 +323,22 @@ static bool expand_macro(Token **rest, Token *tok) {
   if (!equal(tok->next, "("))
     return false;
 
+  Token *macro_token = tok;
   MacroArg *args  = read_macro_args(&tok, tok, m->params);
-  *rest = append(subst(m->body, args), tok);
+  Token *rparen = tok;
+
+  // tokens that consist a func-like macro invocation may have different
+  // hidesets, and if that's the case, it's not clear what the hideset
+  // for the new tokens should be. we take the intersection of the macro
+  // token and the closing parenthesis and use it as a new hideset, as
+  // explained in the Dave Prossor's algorithm.
+
+  Hideset *hs = hideset_intersection(macro_token->hideset, rparen->hideset);
+  hs = hideset_union(hs, new_hideset(m->name));
+
+  Token *body = subst(m->body, args);
+  body = add_hideset(body, hs);
+  *rest = append(body, tok);
   return true;
 }
 

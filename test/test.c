@@ -190,7 +190,15 @@ float add_float3(float x, float y, float z) {
   return x + y + z;
 }
 
+int M9(int x) { return x*x; }
+
 int main() {
+
+#define M9(x) M10(x) * x
+#define M10(x) M9(x) + 3
+  assert(10, M9(2), "M9(2)");
+#undef M9
+#undef M10
 
 #define M8(x,y) x*y
   assert(20, M8((2+3), 4), "M8((2+3), 4)");
