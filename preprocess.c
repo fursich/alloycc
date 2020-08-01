@@ -78,6 +78,66 @@ static Token *new_eof(Token *tok) {
   return t;
 }
 
+// double quote given string and returns it
+static char *quote_string(char *str)  {
+  int bufsize = 3; // at minimum we need an array of three bytes that can contain: ""\0
+
+  for (int i = 0; str[i]; i++) {
+    if (str[i] == '\\' || str[i] == '"')
+      bufsize++;
+    bufsize++;
+  }
+
+  char *buf = malloc(bufsize);
+  char *p = buf;
+  *p++ = '"';
+  for (int i = 0; str[i]; i++) {
+    if (str[i] == '\\' || str[i] == '"')
+      *p++ = '\\';
+    *p++ = str[i];
+  }
+  *p++ = '"';
+  *p++ = '\0';
+  return buf;
+}
+
+static Token *new_str_token(char *str, Token *tmpl) {
+  char *buf = quote_string(str);
+  return tokenize(tmpl->filename, tmpl->file_no, buf);
+}
+
+
+// concatenates all tokens in `tok` and returns a new string token.
+static char *join_tokens(Token *tok) {
+  int len = 1;
+  for (Token *t = tok; t; t = t->next) {
+    if (t != tok && t->has_space)
+      len++;
+    len += t->len;
+  }
+
+  char *buf = malloc(len);
+
+  int pos = 0;
+  for (Token *t = tok; t; t = t->next) {
+    if (t != tok && t->has_space)
+      buf[pos++] = ' ';
+    strncpy(buf+pos, t->str, t->len);
+    pos += t->len;
+  }
+  buf[pos] = '\0';
+  return buf;
+}
+
+// concatenates all tokens in `arg` and returns a new string token.
+// used for the stringizing operator (#).
+static Token *stringize(Token *hash, Token *arg) {
+  // create a new string token. we need to set some value to its source location
+  // for error reporting function. we use a macro name token as a template
+  char *s = join_tokens(arg);
+  return new_str_token(s, hash);
+}
+
 // append tok2 to the end of tok1
 static Token *append(Token *tok1, Token *tok2) {
   if (!tok1 || tok1->kind == TK_EOF)
@@ -282,19 +342,29 @@ static Token *subst(Token *tok, MacroArg *args) {
   while (tok->kind != TK_EOF)  {
     Token *arg = find_arg(args, tok);
 
-    if (!arg) {
-      cur =  cur->next = copy_token(tok);
+    if (arg) {
+      // if current token is a macro parameter, replace it with actuals
       tok = tok->next;
+      if (arg != EMPTY)
+        for (Token *t = arg; t; t = t->next)
+          cur =  cur->next = copy_token(t);
       continue;
     }
 
+    // '#' followed by a parameter is replaced with stringized actuals
+    if (equal(tok, "#")) {
+      Token *arg = find_arg(args, tok->next);
+      if (arg) {
+        cur =  cur->next = stringize(tok, arg);
+        tok = tok->next->next;
+        continue;
+      }
+    }
+
+    // handle non-macro token
+    cur =  cur->next = copy_token(tok);
     tok = tok->next;
-
-    if (arg == EMPTY)
-      continue;
-
-    for (Token *t = arg; t; t = t->next)
-      cur =  cur->next = copy_token(t);
+    continue;
   }
 
   return head.next;

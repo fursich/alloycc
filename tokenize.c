@@ -482,7 +482,7 @@ static void add_line_info(Token *tok) {
   } while(*p++);
 }
 
-static Token *tokenize(char *filename, int file_no, char *p) {
+Token *tokenize(char *filename, int file_no, char *p) {
   current_filename = filename;
   current_input = p;
 
