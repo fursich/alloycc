@@ -601,10 +601,37 @@ static char *read_file(char *path) {
   return buf;
 }
 
+// removes backslashes folllowed by a newline
+static void remove_backslash_newline(char *p) {
+  char *q = p;
+
+  // we want to keep the number of newline characters so that
+  // the logical line number matches the actual one.
+  // this counter will maintain the number of newlines we are removing here
+  int cnt = 0;
+
+  while (*p) {
+    if (startswith(p, "\\\n")) {
+      p += 2;
+      cnt++;         // skip newlines
+    } else if (*p == '\n') {
+      *q++ = *p++;
+      for (; cnt > 0; cnt--)
+        *q++ = '\n'; // additionally insert 'borrowed' newlines at the nearest newline
+    } else {
+      *q++ = *p++;
+    }
+  }
+
+  *q = '\0';
+}
+
 Token *tokenize_file(char *path) {
   char *p = read_file(path);
   if (!p)
     return NULL;
+
+  remove_backslash_newline(p);
 
   static int file_no;
   if (!opt_E)

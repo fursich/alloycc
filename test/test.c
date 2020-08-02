@@ -194,6 +194,10 @@ int M9(int x) { return x*x; }
 
 int main() {
 
+  assert(1, size\
+of(char), \
+         "sizeof(char)");
+
   assert(5,
 #if no_such_symbol == 0
          5,
