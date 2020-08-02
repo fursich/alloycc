@@ -9,6 +9,9 @@
 #include <string.h>
 #include <strings.h>
 #include <assert.h>
+#include <sys/stat.h>
+#include <sys/types.h>
+#include <unistd.h>
 
 typedef struct Type Type;
 typedef struct Hideset Hideset;

@@ -18,6 +18,10 @@ typedef struct {
   void *reg_save_area;
 } va_list[1];
 
+struct stat {
+  char _[512];
+};
+
 void *malloc(long size);
 void *calloc(long nmenb, long size);
 void *realloc(void *buf, long size);
@@ -30,6 +34,7 @@ int fclose(FILE *fp);
 int feof(FILE *stream);
 static void assert() {}
 void exit(int status);
+int stat(char *path, struct stat *statbuf);
 
 static void va_end(va_list ap) {}
 int printf(char *fmt, ...);
