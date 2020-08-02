@@ -104,6 +104,10 @@ int sum3(int i, int j, int k) {
   return i + j + k;
 }
 
+int sum6(int i, int j, int k, int l, int m, int n) {
+  return i + j + k + l + m + n;
+}
+
 int sub2(int i, int j) {
   return i - j;
 }
@@ -196,6 +200,18 @@ float add_float3(float x, float y, float z) {
 int M9(int x) { return x*x; }
 
 int main() {
+
+#define M14(...) 3
+  assert(3, M14(), "M14()");
+#define M14(...) __VA_ARGS__
+  assert(5, M14(5), "M14(5)");
+#define M14(...) sum2(__VA_ARGS__)
+  assert(8, M14(2, 6), "M14(2, 6)");
+#define M14(...) sum6(1,2,__VA_ARGS__,6)
+  assert(21, M14(3,4,5), "M14(3,4,5)");
+#define M14(x, ...) sum6(1,2,x,__VA_ARGS__,6)
+  assert(21, M14(3,4,5), "M14(3,4,5)");
+#undef M14
 
   assert(0, strcmp(main_filename, "test.c"), "strcmp(main_filename, \"tests.c\")");
   assert(16, main_line, "main_line");
