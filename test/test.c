@@ -12,6 +12,9 @@ int memcmp(char *, char *);
 double add_double(double x, double y);
 float add_float(float x, float y);
 
+char *main_filename = __FILE__;
+int main_line = __LINE__;
+
 // test function
 int assert(long expected, long actual, char *code) {
   if (expected == actual) {
@@ -193,6 +196,11 @@ float add_float3(float x, float y, float z) {
 int M9(int x) { return x*x; }
 
 int main() {
+
+  assert(0, strcmp(main_filename, "test.c"), "strcmp(main_filename, \"tests.c\")");
+  assert(16, main_line, "main_line");
+  assert(0, strcmp(include1_filename, "include1.h"), "strcmp(include1_filename, \"include1.h\")");
+  assert(4, include1_line, "include1_line");
 
 assert(1, __STDC__, "__STDC__");
 

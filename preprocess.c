@@ -42,6 +42,8 @@ struct Hideset {
 };
 
 static Macro *macros;
+static Macro *file_macro;
+static Macro *line_macro;
 static CondIncl *cond_incl;
 
 static Token *preprocess2(Token *tok);
@@ -104,6 +106,12 @@ static char *quote_string(char *str)  {
 
 static Token *new_str_token(char *str, Token *tmpl) {
   char *buf = quote_string(str);
+  return tokenize(tmpl->filename, tmpl->file_no, buf);
+}
+
+static Token *new_num_token(int val, Token *tmpl) {
+  char *buf = malloc(20);
+  sprintf(buf, "%d\n", val);
   return tokenize(tmpl->filename, tmpl->file_no, buf);
 }
 
@@ -424,6 +432,18 @@ static bool expand_macro(Token **rest, Token *tok) {
 
   // for object-like macro application
   if (m->is_objlike) {
+    if (m == file_macro) {
+      *rest = new_str_token(tok->filename, tok);
+      (*rest)->next = tok->next;
+      return true;
+    }
+
+    if (m == line_macro) {
+      *rest = new_num_token(tok->line_no, tok);
+      (*rest)->next = tok->next;
+      return true;
+    }
+
     // append (copied chain of) macro body with expanded macro name,
     // which is registered at the end of the tokens' hideset
     Hideset *hs = hideset_union(tok->hideset, new_hideset(m->name));
@@ -499,12 +519,6 @@ static CondIncl *push_cond_incl(Token *tok, bool included) {
   ci->included = included;
   cond_incl = ci;
   return ci;
-}
-
-static Token *new_num_token(int val, Token *tmpl) {
-  char *buf = malloc(20);
-  sprintf(buf, "%d\n", val);
-  return tokenize(tmpl->filename, tmpl->file_no, buf);
 }
 
 static Token *read_const_expr(Token **rest, Token *tok) {
@@ -806,6 +820,9 @@ static void init_macros(void) {
   define_macro("__signed__",             "signed");
   define_macro("__typeof__",             "typeof");
   define_macro("__volatile__",           "volatile");
+
+  file_macro = add_macro("__FILE__", true, NULL);
+  line_macro = add_macro("__LINE__", true, NULL);
 }
 
 // entry point function of the preprocessor
