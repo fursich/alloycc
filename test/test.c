@@ -194,6 +194,14 @@ int M9(int x) { return x*x; }
 
 int main() {
 
+  assert(5,
+#if no_such_symbol == 0
+         5,
+#else
+         6,
+#endif
+         "5");
+
 #define M12
   assert(3,
 #if defined(M12)
