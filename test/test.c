@@ -194,6 +194,8 @@ int M9(int x) { return x*x; }
 
 int main() {
 
+assert(1, __STDC__, "__STDC__");
+
 #include "include3.h"
   assert(3, foo, "foo");
 
