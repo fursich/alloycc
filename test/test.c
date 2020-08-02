@@ -199,7 +199,15 @@ float add_float3(float x, float y, float z) {
 
 int M9(int x) { return x*x; }
 
+char *func_fn(void) {
+  return __func__;
+}
+
 int main() {
+
+  assert(5, sizeof(__func__), "sizeof(__func__)");
+  assert(0, strcmp("main", __func__), "strcmp(\"main\", __func__)");
+  assert(0, strcmp("func_fn", func_fn()), "strcmp(\"func_fn\", func_fn())");
 
 #define M14(...) 3
   assert(3, M14(), "M14()");

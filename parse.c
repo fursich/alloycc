@@ -375,6 +375,12 @@ Node *new_node_cast(Node *expr, Type *ty) {
   return node;
 }
 
+// create a lvar node for "__func__" that refers to the name of the current function
+static void add_func_ident(char *funcname) {
+  Var *var = new_string_literal(funcname, strlen(funcname) + 1);
+  push_scope("__func__")->var = var;
+}
+
 // program = (funcdef | global-var)*
 Program *parse(Token *tok) {
   // add built-if functon types
@@ -1254,6 +1260,7 @@ static Function *funcdef(Token **rest, Token *tok) {
 
   func->params = locals;
 
+  add_func_ident(func->name);
   func->node = block_stmt(rest, tok);
   func->locals = locals;
 
