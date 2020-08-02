@@ -236,6 +236,7 @@ void codegen(Program *prog);
 // main.c
 //
 extern bool opt_E;
+extern char **include_paths;
 
 //
 // type.c

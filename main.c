@@ -1,6 +1,7 @@
 #include "alloycc.h"
 
 bool opt_E;
+char **include_paths;
 static char *input_file;
 
 static void usage(void) {
@@ -9,9 +10,17 @@ static void usage(void) {
 }
 
 static void parse_args(int argc, char **argv) {
+  include_paths = malloc(sizeof(char *) * argc);
+  int npaths = 0;
+
   for (int i = 1; i < argc; i++) {
     if (!strcmp(argv[i], "--help"))
       usage();
+
+    if (!strncmp(argv[i], "-I", 2)) {
+      include_paths[npaths++] = argv[i] + 2;
+      continue;
+    }
 
     if (!strcmp(argv[i], "-E")) {
       opt_E = true;
@@ -23,6 +32,8 @@ static void parse_args(int argc, char **argv) {
 
     input_file = argv[i];
   }
+
+  include_paths[npaths] = NULL;
 
   if (!input_file)
     error("no input files");

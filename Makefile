@@ -49,7 +49,7 @@ $(STG1DIR)/%.o: %.c $(HEADER)
 
 # for testing (w/ stg1)
 test: $(STG1TARGET) $(TSTDIR)/$(TSTSOURCE) $(TSTDIR)/extern.o
-	(cd $(TSTDIR); ../$(STG1TARGET) $(TSTSOURCE)) > $(TSTDIR)/tmp.s
+	(cd $(TSTDIR); ../$(STG1TARGET) -I. $(TSTSOURCE)) > $(TSTDIR)/tmp.s
 	$(CC) -static -g -o $(TSTDIR)/tmp $(TSTDIR)/tmp.s $(TSTDIR)/extern.o
 	$(TSTDIR)/tmp
 
@@ -61,7 +61,7 @@ $(STG2TARGET): $(STG1TARGET) $(SRCS) $(HEADER) self.sh
 
 # for testing (w/ stg2)
 test-stg2: $(STG2TARGET) $(TSTDIR)/$(TSTSOURCE) $(TSTDIR)/extern.o
-	(cd $(TSTDIR); ../$(STG2TARGET) $(TSTSOURCE)) > $(TSTDIR)/tmp.s
+	(cd $(TSTDIR); ../$(STG2TARGET) -I. $(TSTSOURCE)) > $(TSTDIR)/tmp.s
 	$(CC) -static -g -o $(TSTDIR)/tmp $(TSTDIR)/tmp.s $(TSTDIR)/extern.o
 	$(TSTDIR)/tmp
 
