@@ -45,6 +45,7 @@ static Macro *macros;
 static CondIncl *cond_incl;
 
 static Token *preprocess2(Token *tok);
+static Macro *find_macro(Token *tok);
 
 static bool is_hash(Token *tok) {
   return tok->at_bol && equal(tok, "#");
@@ -500,9 +501,49 @@ static CondIncl *push_cond_incl(Token *tok, bool included) {
   return ci;
 }
 
+static Token *new_num_token(int val, Token *tmpl) {
+  char *buf = malloc(20);
+  sprintf(buf, "%d\n", val);
+  return tokenize(tmpl->filename, tmpl->file_no, buf);
+}
+
+static Token *read_const_expr(Token **rest, Token *tok) {
+  tok = copy_line(rest, tok);
+
+  Token head = {};
+  Token *cur = &head;
+
+  while (tok->kind != TK_EOF) {
+    // "defined(foo)" or "defined foo" has to be replaced:
+    //   "1" if macro "foo" is defined
+    //   "0" otherwise
+    if (equal(tok, "defined")) {
+      Token *start = tok;
+      bool has_paren = consume(&tok, tok->next, "(");
+
+      if (tok->kind != TK_IDENT)
+        error_tok(start, "macro name must be an identifier");
+      Macro *m = find_macro(tok);
+      tok = tok->next;
+
+      if (has_paren)
+        tok = skip(tok, ")");
+
+      cur = cur->next = new_num_token(m ? 1 : 0, start);
+      continue;
+    }
+
+    cur = cur->next = tok;
+    tok = tok->next;
+  }
+
+  cur->next = tok;
+  return head.next;
+}
+
 // read and evaluate a constant expression
 static long eval_const_expr(Token **rest, Token *tok) {
-  Token *expr = copy_line(rest, tok);
+  Token *expr = read_const_expr(rest, tok);
   expr = preprocess2(expr);
   Token *rest2;
   long val = const_expr(&rest2, expr);

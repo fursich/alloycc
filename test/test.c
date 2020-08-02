@@ -194,6 +194,41 @@ int M9(int x) { return x*x; }
 
 int main() {
 
+#define M12
+  assert(3,
+#if defined(M12)
+         3,
+#else
+         4,
+#endif
+         "3");
+
+#define M12
+  assert(3,
+#if defined M12
+         3,
+#else
+         4,
+#endif
+         "3");
+
+  assert(4,
+#if defined(M12) - 1
+         3,
+#else
+         4,
+#endif
+         "4");
+
+  assert(4,
+#if defined(NO_SUCH_MACRO)
+         3,
+#else
+         4,
+#endif
+         "4");
+#undef M12
+
 #define paste(x,y) x##y
   assert(15, paste(1,5), "paste(1,5)");
   assert(255, paste(0,xff), "paste(0,xff)");
